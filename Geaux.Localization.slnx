@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Geaux.Localization.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
+  <Folder Name="/tools/" />
+</Solution>
