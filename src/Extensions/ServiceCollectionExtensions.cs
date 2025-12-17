@@ -1,7 +1,3 @@
-﻿// // <copyright file="*" company="GeauxCajunIT">
-// // Copyright (c) GeauxCajunIT. All rights reserved.
-// // </copyright>
-
 using Geaux.Localization.Config;
 using Geaux.Localization.Data;
 using Geaux.Localization.Services;
@@ -19,17 +15,13 @@ namespace Geaux.Localization.Extensions;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers the Geaux localization DbContext, options, and string localizer
-    /// using settings from configuration (including database provider and migrations assembly).
+    /// Registers the Geaux localization DbContext, options, and string localizer using settings from configuration,
+    /// including database provider and migrations assembly.
     /// </summary>
     /// <param name="services">The service collection to add services to.</param>
     /// <param name="configuration">The application configuration.</param>
-    /// <returns>
-    /// The same <see cref="IServiceCollection"/> instance so that multiple calls can be chained.
-    /// </returns>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown when the localization database connection string cannot be resolved.
-    /// </exception>
+    /// <returns>The same <see cref="IServiceCollection"/> instance so that multiple calls can be chained.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the localization database connection string cannot be resolved.</exception>
     public static IServiceCollection AddGeauxLocalization(
         this IServiceCollection services,
         IConfiguration configuration)
@@ -132,4 +124,3 @@ public static class ServiceCollectionExtensions
         return services;
     }
 }
-
