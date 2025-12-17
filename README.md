@@ -1,74 +1,38 @@
-﻿Geaux.Localization
+# Geaux.Localization
 
-Tenant-aware, culture-aware, database-backed localization for .NET 8+ SaaS applications.
+Tenant-aware, culture-aware, database-backed localization for .NET 8+ and .NET 9 applications.
 
-Geaux.Localization provides a complete end-to-end localization system for multi-tenant and multi-culture applications.
-It integrates deeply with EF Core, ASP.NET Core, and the Geaux Platform's tenant and administrative systems.
+Geaux.Localization provides a complete end-to-end localization system for multi-tenant and multi-culture
+applications. It integrates with Entity Framework Core and ASP.NET Core to deliver database-backed translations that
+respect the current tenant and culture for every request.
 
-✨ Features
+## Features
+- Database-backed `IStringLocalizer` implementation with tenant and culture scoping
+- `[Localized]` attribute for annotating model properties that require translation keys
+- EF Core `SaveChanges` interceptor that automatically upserts translations for annotated properties
+- Seeder utility to create default translations across assemblies
+- DI extension for registering context, localizer, and supporting services from configuration
+- Support for SQL Server, PostgreSQL, MySQL/MariaDB, and Sqlite providers
 
-🌍 Database-backed IStringLocalizer
+## Installation
+Add the package reference to your project:
 
-🏬 Tenant-aware (isolated translations per tenant)
-
-🗣 Culture-aware with fallback support
-
-🧩 [Localized] attribute for annotating model properties
-
-🔄 Automatic translation syncing (via EF Core SaveChanges interceptor)
-
-🛠 CLI tool for scanning, seeding, and syncing translations
-
-🧰 Multi-database support:
-
-SQL Server
-
-PostgreSQL
-
-MySQL/MariaDB
-
-Sqlite
-
-LocalDB
-
-📦 NuGet-ready, standalone library
-
-⚙ Compatible with .NET 8, .NET 9, future .NET versions
-
-📦 Installation
-Library
+```bash
 dotnet add package Geaux.Localization
+```
 
-EF Core Extensions
-dotnet add package Geaux.Localization.EntityFrameworkCore
+Enable XML documentation so DocFX and IntelliSense can consume the inline XML comments:
 
-CLI Tool
-dotnet tool install --global Geaux.Localization.CLI
+```xml
+<PropertyGroup>
+  <GenerateDocumentationFile>true</GenerateDocumentationFile>
+</PropertyGroup>
+```
 
-🚀 Getting Started
-1. Register services
+## Configuration
+Add a `Localization` section to your `appsettings.json`:
 
-Add to your Program.cs:
-
-builder.Services.AddGeauxLocalization(builder.Configuration);
-
-
-This registers:
-
-LocalizationOptions
-
-GeauxLocalizationContext
-
-DatabaseStringLocalizer
-
-DatabaseStringLocalizerFactory
-
-LocalizationSaveChangesInterceptor
-
-💾 Configuration
-
-Add to appsettings.json:
-
+```json
 {
   "ConnectionStrings": {
     "LocalizationDb": "Server=localhost;Database=GeauxLocalization;Trusted_Connection=True;"
@@ -82,161 +46,57 @@ Add to appsettings.json:
     "MigrationsAssembly": "Geaux.Migrations"
   }
 }
+```
 
-🧊 Database Providers Supported
+## Usage
+Register the localization services in `Program.cs`:
 
-Set via "Provider" in your config:
+```csharp
+using Geaux.Localization.Extensions;
 
-Provider	EF Core Call	Example
-SQL Server	UseSqlServer	"Provider": "SqlServer"
-PostgreSQL	UseNpgsql	"Provider": "PostgreSql"
-MySQL/MariaDB	UseMySql	"Provider": "MySql"
-Sqlite	UseSqlite	"Provider": "Sqlite"
-LocalDB	SQL Server provider	"Provider": "LocalDb"
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddGeauxLocalization(builder.Configuration);
+```
 
-Migrations usually live in:
-Geaux.Migrations
+Annotate model properties that need translations:
 
-🧩 LocalizedAttribute
-
-Annotate a property to automatically generate translation keys.
-
-Example
-[Localized(
-    key: "Role.Name",
-    errorMessageKey: "Role.Name.Required",
-    displayNameKey: "Role.Name.Label",
-    displayMessageKey: "Role.Name.Info")]
-public new string Name { get; set; } = string.Empty;
-
-
-Keys generated:
-
-Role.Name
-Role.Name.Required
-Role.Name.Label
-Role.Name.Info
-
-
-These are stored as rows in the Translation table:
-
-TenantId | Culture | Key                      | Value
-
-Works with:
-
-Admin panels
-
-Forms
-
-DTO validation
-
-Display labels
-
-Tooltips
-
-Help text
-
-All unified under consistent translation keys.
-
-🏗 How Localization Works
-1️⃣ At runtime
-
-DatabaseStringLocalizer resolves:
-
-Active tenant (via ITenantProvider)
-
-Active culture (via ASP.NET RequestLocalization)
-
-Translation lookup → (TenantId, Culture, Key)
-
-Optional fallback to default culture
-
-2️⃣ At save time
-
-LocalizationSaveChangesInterceptor:
-
-Detects [Localized] annotations
-
-Creates or updates translation rows
-
-Ensures keys remain in sync with domain models
-
-3️⃣ At build/CI time
-
-Geaux.Localization.CLI:
-
-Scans assemblies
-
-Finds [Localized] properties
-
-Seeds missing translations
-
-Supports export/import for translators
-
-📘 Example Entity With Localization
+```csharp
 using Geaux.Localization.Attributes;
-using Microsoft.AspNetCore.Identity;
 
-public class GeauxIdentityRole : IdentityRole
+public class Product
 {
     public string TenantId { get; set; } = "default";
 
     [Localized(
-        key: "Role.Name",
-        errorMessageKey: "Role.Name.Required",
-        displayNameKey: "Role.Name.Label",
-        displayMessageKey: "Role.Name.Info")]
-    public new string Name { get; set; } = string.Empty;
-
-    [Localized(
-        key: "Role.Description",
-        errorMessageKey: "Role.Description.Required",
-        displayNameKey: "Role.Description.Label",
-        displayMessageKey: "Role.Description.Info")]
-    public string Description { get; set; } = string.Empty;
-
-    public bool IsActive { get; set; }
+        key: "Product.Name",
+        errorMessageKey: "Product.Name.Required",
+        displayNameKey: "Product.Name.Label",
+        displayMessageKey: "Product.Name.Description")]
+    public string Name { get; set; } = string.Empty;
 }
+```
 
-🧰 Project Structure
-Geaux.Localization/
-│
-├── Attributes/
-│   └── LocalizedAttribute.cs
-│
-├── Config/
-│   └── LocalizationOptions.cs
-│
-├── Data/
-│   └── GeauxLocalizationContext.cs
-│
-├── Models/
-│   └── Translation.cs
-│
-├── Services/
-│   ├── DatabaseStringLocalizer.cs
-│   ├── DatabaseStringLocalizerFactory.cs
-│   ├── LocalizationResolver.cs
-│   └── LocalizationSaveChangesInterceptor.cs
-│
-├── Extensions/
-│   └── ServiceCollectionExtensions.cs
-│
-├── README.md
-└── Geaux.Localization.csproj
+Translations are stored in the `Translations` table as rows identified by tenant, culture, and key. The
+`LocalizationSaveChangesInterceptor` keeps entries in sync during EF Core save operations.
 
+### Provider mapping
+| Provider value | EF Core call     | Example                                  |
+|----------------|------------------|------------------------------------------|
+| SqlServer      | `UseSqlServer`   | `"Provider": "SqlServer"`               |
+| PostgreSql     | `UseNpgsql`      | `"Provider": "PostgreSql"`              |
+| MySql/MariaDb  | `UseMySql`       | `"Provider": "MySql"`                   |
+| Sqlite         | `UseSqlite`      | `"Provider": "Sqlite"`                  |
+| LocalDb        | `UseSqlServer`   | `"Provider": "LocalDb"`                 |
 
-CLI project:
+## Documentation
+Generate DocFX documentation (requires the `docfx` global tool):
 
-Geaux.Localization.CLI/
+```bash
+dotnet tool install -g docfx
+docfx docfx.json
+```
 
-📄 License
+The generated site will be available under the `_site` folder.
 
-MIT License
-Copyright ©
-Brent Lee Rigsby / GeauxCajunIT
-
-🌐 Repository
-
-GitHub:
-https://github.com/GeauxCajunIT/GeauxPlatform
+## License
+MIT License © Brent Lee Rigsby / GeauxCajunIT

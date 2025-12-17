@@ -1,0 +1,36 @@
+{
+  "metadata": [
+    {
+      "src": [
+        {
+          "files": ["src/Geaux.Localization.csproj"],
+          "exclude": ["**/bin/**", "**/obj/**"]
+        }
+      ],
+      "dest": "api",
+      "properties": {
+        "TargetFramework": "net8.0"
+      }
+    }
+  ],
+  "build": {
+    "content": [
+      {
+        "files": ["docs/**.md", "docs/**/toc.yml"]
+      },
+      {
+        "files": ["api/**.yml", "api/**.md", "api/toc.yml"]
+      },
+      {
+        "files": ["README.md"],
+        "dest": "docs"
+      }
+    ],
+    "resource": [
+      {
+        "files": ["docs/images/**"]
+      }
+    ],
+    "output": "_site"
+  }
+}
