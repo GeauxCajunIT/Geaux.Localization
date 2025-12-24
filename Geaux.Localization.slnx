@@ -1,7 +1,22 @@
 <Solution>
+  <Folder Name="/docs/">
+    <File Path="docs/docfx.json" />
+    <File Path="docs/index.md" />
+    <File Path="docs/toc.yml" />
+  </Folder>
+  <Folder Name="/docs/api/">
+    <File Path="docs/api/index.md" />
+  </Folder>
+  <Folder Name="/Sample/">
+    <Project Path="sample/Geaux.Localization.SampleBlazor/Geaux.Localization.SampleBlazor.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Geaux.Localization.csproj" />
   </Folder>
-  <Folder Name="/tests/" />
+  <Folder Name="/tests/">
+    <Project Path="tests/Geaux.Localization.Tests/Geaux.Localization.Tests.csproj" Id="9d4f13ff-d79a-4c08-b99c-3b9a9b085339" />
+  </Folder>
   <Folder Name="/tools/" />
 </Solution>

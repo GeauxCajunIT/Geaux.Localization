@@ -1,0 +1,7 @@
+/* sample overrides */
+/* Defensive: prevent icons from stretching full width if css loads late */
+.mud-icon-root {
+    width: 1em;
+    height: 1em;
+    display: inline-block;
+}

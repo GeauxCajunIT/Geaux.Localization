@@ -1,0 +1,65 @@
+@inherits LayoutComponentBase
+@inject NavigationManager Nav
+
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleDrawer" />
+        <MudText Typo="Typo.h6">Geaux.Localization Sample</MudText>
+
+        <MudSpacer />
+
+        <MudSelect T="string"
+                   Dense="true"
+                   Margin="Margin.Dense"
+                   Variant="Variant.Outlined"
+                   Style="min-width: 160px;"
+                   Value="@_culture"
+                   ValueChanged="OnCultureChanged">
+
+            <MudSelectItem Value=@("en-US")>English (en-US)</MudSelectItem>
+            <MudSelectItem Value=@("fr-FR")>Français (fr-FR)</MudSelectItem>
+
+        </MudSelect>
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen" Variant="DrawerVariant.Temporary" Elevation="1">
+        <MudNavMenu>
+            <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
+            <MudNavLink Href="/products" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Category">Products</MudNavLink>
+            <MudNavLink Href="/orders" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.ShoppingCart">Orders</MudNavLink>
+            <MudNavLink Href="/admin/translations" Icon="@Icons.Material.Filled.Translate">Translations</MudNavLink>
+        </MudNavMenu>
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _drawerOpen;
+    private string _culture = System.Globalization.CultureInfo.CurrentUICulture.Name;
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+
+    private void OnCultureChanged(string value)
+    {
+
+        _culture = value;
+
+        // Redirect through the cookie-setting endpoint and come back to current page
+        var relative = Nav.ToBaseRelativePath(Nav.Uri);
+        if (!relative.StartsWith("/")) relative = "/" + relative;
+
+        var target = $"/culture/set?culture={Uri.EscapeDataString(value)}&returnUrl={Uri.EscapeDataString(relative)}";
+        Nav.NavigateTo(target, forceLoad: true);
+    }
+}

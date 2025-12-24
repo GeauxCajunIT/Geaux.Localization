@@ -33,14 +33,14 @@ public static class LocalizationResolver
         string tenantId,
         string culture)
     {
-        var props = typeof(T).GetProperties()
+        IEnumerable<System.Reflection.PropertyInfo> props = typeof(T).GetProperties()
             .Where(p => Attribute.IsDefined(p, typeof(LocalizedAttribute)));
 
-        foreach (var prop in props)
+        foreach (System.Reflection.PropertyInfo? prop in props)
         {
-            var attr = (LocalizedAttribute)Attribute.GetCustomAttribute(prop, typeof(LocalizedAttribute))!;
-            var key = attr.Key;
-            var localized = localizer[key];
+            LocalizedAttribute attr = (LocalizedAttribute)Attribute.GetCustomAttribute(prop, typeof(LocalizedAttribute))!;
+            string key = attr.Key;
+            LocalizedString localized = localizer[key];
 
             if (!localized.ResourceNotFound || attr.FallbackToDefault)
             {

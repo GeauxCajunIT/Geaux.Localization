@@ -1,5 +1,5 @@
 using Geaux.Localization.Attributes;
-using Geaux.Localization.Data;
+using Geaux.Localization.Contexts;
 using Geaux.Localization.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
@@ -7,73 +7,116 @@ using System.Reflection;
 namespace Geaux.Localization.Services;
 
 /// <summary>
-/// Provides functionality to seed localization translation entries for properties marked with the
-/// <see cref="LocalizedAttribute"/> across specified assemblies.
+/// Seeds localization keys and default values for properties marked with <see cref="LocalizedAttribute"/> in the provided assemblies.
 /// </summary>
 /// <remarks>
-/// This class is typically used during application setup or tenant initialization to ensure that all required
-/// translation keys exist in the database for a given tenant and culture. It scans the provided assemblies for
-/// properties decorated with the <see cref="LocalizedAttribute"/> and creates default translation entries if they do not
-/// already exist. This helps prevent missing translation keys at runtime.
+/// This seeder ensures keys exist in <see cref="LocalizationKey"/> and that a value exists in <see cref="LocalizationValue"/>
+/// for the provided culture/tenant.
 /// </remarks>
-public class LocalizationSeeder
+public sealed class LocalizationSeeder
 {
-    private readonly GeauxLocalizationContext _db;
+    private readonly GeauxLocalizationDbContext _db;
     private readonly IEnumerable<Assembly> _assemblies;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="LocalizationSeeder"/> class.
     /// </summary>
-    /// <param name="db">The localization database context used for persisting translations.</param>
-    /// <param name="assemblies">The assemblies to scan for properties decorated with <see cref="LocalizedAttribute"/>.</param>
-    public LocalizationSeeder(GeauxLocalizationContext db, IEnumerable<Assembly> assemblies)
+    /// <param name="db">Localization database context.</param>
+    /// <param name="assemblies">Assemblies to scan for localized properties.</param>
+    public LocalizationSeeder(GeauxLocalizationDbContext db, IEnumerable<Assembly> assemblies)
     {
-        _db = db;
-        _assemblies = assemblies;
+        _db = db ?? throw new ArgumentNullException(nameof(db));
+        _assemblies = assemblies ?? throw new ArgumentNullException(nameof(assemblies));
     }
 
     /// <summary>
-    /// Seeds default translation entries for all localized properties for the specified tenant and culture if they do
-    /// not already exist.
+    /// Scans assemblies and creates missing keys/values for the specified culture.
     /// </summary>
-    /// <remarks>
-    /// This method scans all configured assemblies for properties marked with the <see cref="LocalizedAttribute"/> and
-    /// ensures that a default translation entry exists for each property for the given tenant and culture. If an entry
-    /// does not exist, it is created with the property name as the default value. Existing translations are not
-    /// overwritten.
-    /// </remarks>
-    /// <param name="tenantId">The unique identifier of the tenant for which to seed translations.</param>
-    /// <param name="defaultCulture">The culture code (for example, "en-US") to use when seeding default translations.</param>
-    /// <param name="cancellationToken">A cancellation token that can be used to cancel the asynchronous operation.</param>
-    /// <returns>A task that represents the asynchronous seeding operation.</returns>
-    public async Task SeedAsync(string tenantId, string defaultCulture = "en-US", CancellationToken cancellationToken = default)
+    /// <param name="culture">Culture name (for example, <c>en-US</c>).</param>
+    /// <param name="tenantId">Optional tenant identifier. If null/empty, seeds global translations.</param>
+    /// <param name="overwriteSystemValues">When true, overwrites existing values that are marked <c>IsSystem</c>.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task SeedAsync(
+        string culture,
+        string? tenantId = null,
+        bool overwriteSystemValues = false,
+        CancellationToken cancellationToken = default)
     {
-        var localizedProps = _assemblies
-            .SelectMany(a => a.GetTypes())
-            .SelectMany(t => t.GetProperties()
-                .Where(p => Attribute.IsDefined(p, typeof(LocalizedAttribute)))
-                .Select(p => (Type: t, Property: p, Attr: (LocalizedAttribute)Attribute.GetCustomAttribute(p, typeof(LocalizedAttribute))!)));
+        if (string.IsNullOrWhiteSpace(culture))
+            throw new ArgumentException("Culture must be provided.", nameof(culture));
 
-        foreach ((var type, var prop, var attr) in localizedProps)
+        tenantId = string.IsNullOrWhiteSpace(tenantId) ? null : tenantId;
+
+        HashSet<string> keys = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var assembly in _assemblies)
         {
-            var key = attr.Key ?? $"{type.Name}.{prop.Name}";
-
-            var exists = await _db.Translations
-                .Where(t => t.TenantId == tenantId && t.Culture == defaultCulture && t.Key == key)
-                .AnyAsync(cancellationToken);
-
-            if (!exists)
+            foreach (var type in assembly.GetTypes())
             {
-                _db.Translations.Add(new Translation
+                foreach (var prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
                 {
-                    TenantId = tenantId,
-                    Culture = defaultCulture,
-                    Key = key,
-                    Value = prop.Name // fallback default
-                });
+                    var attr = prop.GetCustomAttribute<LocalizedAttribute>();
+                    if (attr == null) continue;
+
+                    if (!string.IsNullOrWhiteSpace(attr.Key)) keys.Add(attr.Key);
+                    if (!string.IsNullOrWhiteSpace(attr.ErrorMessageKey)) keys.Add(attr.ErrorMessageKey);
+                    if (!string.IsNullOrWhiteSpace(attr.DisplayNameKey)) keys.Add(attr.DisplayNameKey);
+                    if (!string.IsNullOrWhiteSpace(attr.DisplayMessageKey)) keys.Add(attr.DisplayMessageKey);
+                }
             }
         }
 
-        await _db.SaveChangesAsync(cancellationToken);
+        // Ensure keys exist
+        var existingKeys = await _db.LocalizationKeys
+            .AsNoTracking()
+            .Where(k => keys.Contains(k.Key))
+            .Select(k => k.Key)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        List<string> missingKeys = keys.Except(existingKeys, StringComparer.Ordinal).ToList();
+        foreach (var k in missingKeys)
+        {
+            _db.LocalizationKeys.Add(new LocalizationKey { Key = k });
+        }
+
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        // Map key -> id
+        var keyIdMap = await _db.LocalizationKeys
+            .AsNoTracking()
+            .Where(k => keys.Contains(k.Key))
+            .ToDictionaryAsync(k => k.Key, k => k.Id, cancellationToken)
+            .ConfigureAwait(false);
+
+        foreach (var key in keys)
+        {
+            var keyId = keyIdMap[key];
+
+            var existing = await _db.LocalizationValues
+                .FirstOrDefaultAsync(v =>
+                    v.LocalizationKeyId == keyId &&
+                    v.Culture == culture &&
+                    v.TenantId == tenantId, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (existing == null)
+            {
+                _db.LocalizationValues.Add(new LocalizationValue
+                {
+                    LocalizationKeyId = keyId,
+                    TenantId = tenantId,
+                    Culture = culture,
+                    Value = key,
+                    IsSystem = true
+                });
+            }
+            else if (overwriteSystemValues && existing.IsSystem && !string.Equals(existing.Value, key, StringComparison.Ordinal))
+            {
+                existing.Value = key;
+            }
+        }
+
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 }

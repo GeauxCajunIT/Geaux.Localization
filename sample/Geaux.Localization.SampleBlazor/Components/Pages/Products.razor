@@ -1,0 +1,23 @@
+@page "/products"
+@using Geaux.Localization.SampleBlazor.Models
+
+<MudStack Spacing="3">
+    <MudText Typo="Typo.h5">Products (LocalizedAttribute Demo)</MudText>
+
+    <LocalizedModelCard TModel="Product" Title="Sample Product" Model="_product" />
+
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+        Labels come from DB translations using keys like <code>Product.Name.Display</code>.
+        Values come from the model instance.
+    </MudAlert>
+</MudStack>
+
+@code{
+    private readonly Product _product = new()
+    {
+        Name = "ADA Cabin Mug",
+        Sku = "MUG-ADA-01",
+        Price = 24.99m,
+        Description = "Engraved stainless tumbler"
+    };
+}

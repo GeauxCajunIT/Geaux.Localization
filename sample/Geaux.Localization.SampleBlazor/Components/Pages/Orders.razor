@@ -1,0 +1,22 @@
+@page "/orders"
+@using Geaux.Localization.SampleBlazor.Models
+
+<MudStack Spacing="3">
+    <MudText Typo="Typo.h5">Orders (LocalizedAttribute Demo)</MudText>
+
+    <LocalizedModelCard TModel="Order" Title="Sample Order" Model="_order" />
+
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+        Try switching culture on the Home page. Then refresh here to see localized labels.
+    </MudAlert>
+</MudStack>
+
+@code{
+    private readonly Order _order = new()
+    {
+        Number = "ORD-1001",
+        CustomerName = "Laura Rigsby",
+        Total = 89.50m,
+        Status = "Processing"
+    };
+}

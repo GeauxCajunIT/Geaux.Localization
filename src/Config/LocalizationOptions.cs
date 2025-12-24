@@ -11,6 +11,15 @@ public sealed class LocalizationOptions
     public string DefaultCulture { get; set; } = "en-US";
 
     /// <summary>
+    /// Gets or sets an optional tenant identifier used to scope translations.
+    /// </summary>
+    /// <remarks>
+    /// When set, database queries will include this value so that each tenant can have its own
+    /// translation set. When null or empty, translations are treated as global.
+    /// </remarks>
+    public string? TenantId { get; set; }
+
+    /// <summary>
     /// Gets or sets the list of supported cultures for validation and UI culture filtering.
     /// </summary>
     public IList<string> SupportedCultures { get; set; } = new List<string>();
@@ -22,19 +31,25 @@ public sealed class LocalizationOptions
     public bool EnableCultureFallback { get; set; } = true;
 
     /// <summary>
-    /// Gets or sets the connection string name in configuration used for the localization database.
+    /// Full connection string to the localization database. If set, this takes precedence.
+    /// </summary>
+    public string? ConnectionString { get; set; }
+
+    /// <summary>
+    /// Name of the connection string in IConfiguration's ConnectionStrings section.
+    /// Default: "LocalizationDb".
     /// </summary>
     public string ConnectionStringName { get; set; } = "LocalizationDb";
 
     /// <summary>
-    /// Gets or sets the database provider identifier used to configure the DbContext.
-    /// Supported values: SqlServer, PostgreSql, MySql, Sqlite, LocalDb.
+    /// Database provider hint: "SqlServer", "Npgsql", "Sqlite", "MySql", "LocalDb".
+    /// If empty, defaults to SqlServer.
     /// </summary>
-    public string Provider { get; set; } = "SqlServer";
+    public string? Provider { get; set; }
 
     /// <summary>
-    /// Gets or sets the optional migrations assembly name to use for EF Core migrations.
-    /// Typically points to the Geaux.Migrations project.
+    /// Optional migrations assembly name to use when configuring EF.
+    /// If null, the assembly of the DbContext will be used.
     /// </summary>
     public string? MigrationsAssembly { get; set; }
 

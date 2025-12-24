@@ -1,34 +1,75 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+		<TargetFramework>net9.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-		<GenerateDocumentationFile>true</GenerateDocumentationFile>
-	</PropertyGroup>
 
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<NoWarn>$(NoWarn);1591</NoWarn>
+
+		<IsPackable>true</IsPackable>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+
+		<PackageId>Geaux.Localization</PackageId>
+		<RepositoryUrl>https://github.com/GeauxCajunIT/Geaux.Localization</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageProjectUrl>https://github.com/GeauxCajunIT/Geaux.Localization</PackageProjectUrl>
+		<PackageTags>
+			localization;iStringLocalizer;efcore;multitenant;database;geaux
+		</PackageTags>
+
+		<PackageIcon>icon.png</PackageIcon>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<Version>1.4.0</Version>
+		<Authors>Geaux</Authors>
+		<Description>Database-backed localization (IStringLocalizer) with seeding and model property localization.</Description>
+		<RepositoryUrl></RepositoryUrl>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+	</PropertyGroup>
+	
 	<ItemGroup>
-		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+		<None Include="..\assets\icon.png" Pack="true" PackagePath="\" />
+	</ItemGroup>
+	
+	<ItemGroup>
+	  <None Include="..\README.md">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- EF Core for GeauxLocalizationContext, SaveChangesAsync, etc. -->
-		<PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.0.2" />
+		<!-- EF Core -->
 		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.11" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.11" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.11">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+
+		<!-- Providers (kept for single-package convenience) -->
 		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.11" />
-		<PackageReference Include="MySql.EntityFrameworkCore" Version="9.0.9" />
-		<PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.11" />
-		
-		<!-- DI / Configuration / Localization abstractions -->
-		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.11" />
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.11" />
-		<PackageReference Include="Microsoft.Extensions.Localization.Abstractions" Version="9.0.11" />
-		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.11" />
-		
-		<!-- ASP.NET Core abstractions used by DatabaseStringLocalizerFactory -->
-		<!--<PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" />
-		<PackageReference Include="Microsoft.AspNetCore.Localization" />-->
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.11">
+		  <PrivateAssets>all</PrivateAssets>
+		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
+		<PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
+
+		<!-- DI / Options / Config / Localization -->
+			<PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.11" />
+			<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.11" />
+			<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.11" />
+			<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.11" />
+			<PackageReference Include="Microsoft.Extensions.Localization" Version="9.0.11" />
+			<PackageReference Include="Microsoft.Extensions.Localization.Abstractions" Version="9.0.11" />
+			<PackageReference Include="Microsoft.Extensions.Options" Version="9.0.11" />
+			<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.11" />
+
 	</ItemGroup>
 
 </Project>

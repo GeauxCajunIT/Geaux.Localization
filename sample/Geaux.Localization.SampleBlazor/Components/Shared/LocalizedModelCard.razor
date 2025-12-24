@@ -1,0 +1,64 @@
+@using System.Reflection
+@using Geaux.Localization.Attributes
+@using Microsoft.Extensions.Localization
+@typeparam TModel
+
+<MudPaper Class="pa-4" Elevation="1">
+    <MudStack Spacing="2">
+        @if (!string.IsNullOrWhiteSpace(Title))
+        {
+            <MudText Typo="Typo.h6">@Title</MudText>
+        }
+
+        <MudTable Dense="true" Hover="true" Bordered="true" Items="_rows">
+            <HeaderContent>
+                <MudTh style="width: 35%;">Field</MudTh>
+                <MudTh>Value</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Field">@context.Label</MudTd>
+                <MudTd DataLabel="Value">@context.Value</MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public TModel Model { get; set; } = default!;
+    [Parameter] public string? Title { get; set; }
+
+    [Inject] private IStringLocalizerFactory LocalizerFactory { get; set; } = default!;
+
+    private readonly List<Row> _rows = new();
+
+    protected override void OnParametersSet()
+    {
+        _rows.Clear();
+        if (Model is null) return;
+
+        var localizer = LocalizerFactory.Create(typeof(TModel));
+        var props = typeof(TModel).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
+        foreach (var p in props)
+        {
+            var attr = p.GetCustomAttribute<LocalizedAttribute>();
+            if (attr is null) continue;
+
+            var labelKey = attr.DisplayNameKey ?? attr.Key ?? p.Name;
+            var label = localizer[labelKey].Value;
+
+            var raw = p.GetValue(Model);
+            var value = raw switch
+            {
+                null => "",
+                decimal d => d.ToString("C"),
+                DateTime dt => dt.ToString("g"),
+                _ => raw.ToString() ?? ""
+            };
+
+            _rows.Add(new Row(label, value));
+        }
+    }
+
+    private sealed record Row(string Label, string Value);
+}

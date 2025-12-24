@@ -1,16 +1,15 @@
 namespace Geaux.Localization.Interfaces;
 
 /// <summary>
-/// Provides access to the identifier of the current tenant in a multi-tenant application context.
+/// Provides access to the current tenant identifier for localization scoping.
 /// </summary>
+/// <remarks>
+/// If your application is not multi-tenant, you can use a null/empty tenant identifier.
+/// </remarks>
 public interface ITenantContext
 {
     /// <summary>
-    /// Gets the identifier of the current tenant context.
+    /// Gets the current tenant identifier, or null/empty for global translations.
     /// </summary>
-    /// <remarks>
-    /// Use this property to determine which tenant is currently active in multi-tenant scenarios. The value may be
-    /// null or empty if no tenant context is set.
-    /// </remarks>
-    string CurrentTenantId { get; }
+    string? CurrentTenantId { get; }
 }

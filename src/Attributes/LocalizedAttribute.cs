@@ -35,17 +35,17 @@ public class LocalizedAttribute : Attribute
     /// <summary>
     /// Gets the resource key that identifies the error message associated with the current result.
     /// </summary>
-    public string? ErrorMessageKey { get; }
+    public string? ErrorMessageKey { get; set; }
 
     /// <summary>
     /// Gets the resource key used to look up the display name for this item.
     /// </summary>
-    public string? DisplayNameKey { get; }
+    public string? DisplayNameKey { get; set; }
 
     /// <summary>
     /// Gets the resource key used to retrieve the display message associated with this instance.
     /// </summary>
-    public string? DisplayMessageKey { get; }
+    public string? DisplayMessageKey { get; set; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="LocalizedAttribute"/> class with the specified localization

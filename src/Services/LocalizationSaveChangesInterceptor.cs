@@ -1,133 +1,178 @@
 using Geaux.Localization.Attributes;
-using Geaux.Localization.Data;
+using Geaux.Localization.Config;
+using Geaux.Localization.Contexts;
 using Geaux.Localization.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using System.Linq;
-using System.Threading;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
+using System.Reflection;
 
 namespace Geaux.Localization.Services;
 
 /// <summary>
-/// Intercepts Entity Framework Core save operations to automatically upsert localized translations for entity
-/// properties marked with the <see cref="LocalizedAttribute"/>.
+/// EF Core interceptor that upserts localization keys/values for entities with properties marked by <see cref="LocalizedAttribute"/>.
 /// </summary>
 /// <remarks>
-/// This interceptor scans entities being added or modified for properties decorated with <see cref="LocalizedAttribute"/>
-/// and ensures that their translations are present or updated in the localization database. It supports multi-tenant
-/// scenarios by associating translations with a tenant identifier. This class is typically registered with the
-/// <see cref="DbContext"/> to enable automatic localization management during <see cref="DbContext.SaveChanges()"/>
-/// operations.
+/// This interceptor is intended to be added to application DbContexts so that whenever entities are saved,
+/// localization keys and default values are kept in sync with the localization database.
 /// </remarks>
-public class LocalizationSaveChangesInterceptor : SaveChangesInterceptor
+public sealed class LocalizationSaveChangesInterceptor : SaveChangesInterceptor
 {
-    private readonly GeauxLocalizationContext _localizationDb;
-    private readonly string _tenantId;
+    private readonly GeauxLocalizationDbContext _localizationDb;
+    private readonly LocalizationOptions _options;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="LocalizationSaveChangesInterceptor"/> class with the specified localization
-    /// context and tenant identifier.
+    /// Initializes a new instance of the <see cref="LocalizationSaveChangesInterceptor"/> class.
     /// </summary>
-    /// <param name="localizationDb">The localization database context used to access and manage localization data.</param>
-    /// <param name="tenantId">The unique identifier for the tenant associated with this interceptor.</param>
-    public LocalizationSaveChangesInterceptor(GeauxLocalizationContext localizationDb, string tenantId)
+    /// <param name="options">Localization options.</param>
+    /// <param name="configuration">Application configuration (used for connection string resolution).</param>
+    public LocalizationSaveChangesInterceptor(
+        IOptions<LocalizationOptions> options,
+        IConfiguration? configuration = null)
     {
-        _localizationDb = localizationDb;
-        _tenantId = tenantId;
+        if (options == null) throw new ArgumentNullException(nameof(options));
+        _options = options.Value;
+
+        DbContextOptionsBuilder<GeauxLocalizationDbContext> builder = new DbContextOptionsBuilder<GeauxLocalizationDbContext>();
+
+        string provider = (_options.Provider ?? "SqlServer").Trim();
+        var providerKey = provider.ToLowerInvariant();
+        string connectionString = ResolveConnectionString(_options, configuration);
+
+        switch (providerKey)
+        {
+            case "sqlserver":
+                builder.UseSqlServer(connectionString, b =>
+                    b.MigrationsAssembly(typeof(GeauxLocalizationDbContext).Assembly.GetName().Name));
+                break;
+            case "sqlite":
+                builder.UseSqlite(connectionString, b =>
+                    b.MigrationsAssembly(typeof(GeauxLocalizationDbContext).Assembly.GetName().Name));
+                break;
+            case "postgresql":
+            case "postgres":
+            case "npgsql":
+                builder.UseNpgsql(connectionString, b =>
+                    b.MigrationsAssembly(typeof(GeauxLocalizationDbContext).Assembly.GetName().Name));
+                break;
+            case "mysql":
+            case "mariadb":
+                builder.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), b =>
+                    b.MigrationsAssembly(typeof(GeauxLocalizationDbContext).Assembly.GetName().Name));
+                break;
+            default:
+                throw new InvalidOperationException($"Unknown localization provider '{provider}'.");
+        }
+
+        _localizationDb = new GeauxLocalizationDbContext(builder.Options);
     }
 
-    /// <summary>
-    /// Intercepts the asynchronous save operation to upsert localized translations for entity properties marked with
-    /// the <see cref="LocalizedAttribute"/> before changes are persisted to the database.
-    /// </summary>
-    /// <remarks>
-    /// This method scans all added or modified entities in the <see cref="DbContext"/> for properties decorated with the
-    /// <see cref="LocalizedAttribute"/> and ensures their translations are upserted into the localization store before the
-    /// save operation completes. The method does not alter the save operation's outcome but may impact performance if
-    /// many localized properties are present. If the <see cref="DbContext"/> is null, no action is taken.
-    /// </remarks>
-    /// <param name="eventData">Contextual information about the <see cref="DbContext"/> associated with the save operation.</param>
-    /// <param name="result">The current interception result for the save operation.</param>
-    /// <param name="cancellationToken">A token to observe while waiting for the asynchronous operation to complete.</param>
-    /// <returns>A <see cref="ValueTask{TResult}"/> containing the interception result for the save operation.</returns>
+    private static string ResolveConnectionString(LocalizationOptions opts, IConfiguration? configuration)
+    {
+        if (!string.IsNullOrWhiteSpace(opts.ConnectionString))
+            return opts.ConnectionString;
+
+        string name = opts.ConnectionStringName ?? "LocalizationDb";
+        if (configuration != null)
+        {
+            return configuration.GetConnectionString(name)
+                ?? throw new InvalidOperationException($"Localization connection string '{name}' was not found.");
+        }
+
+        throw new InvalidOperationException("Localization connection string is not configured. Provide LocalizationOptions.ConnectionString or a configured connection string named in LocalizationOptions.ConnectionStringName.");
+    }
+
+    /// <inheritdoc />
     public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
         DbContextEventData eventData,
         InterceptionResult<int> result,
         CancellationToken cancellationToken = default)
     {
-        var context = eventData.Context;
-        if (context == null)
-        {
-            return result;
-        }
+        DbContext? context = eventData.Context;
+        if (context == null) return result;
 
-        var entries = context.ChangeTracker.Entries()
+        string? tenantId = string.IsNullOrWhiteSpace(_options.TenantId) ? null : _options.TenantId;
+
+        IEnumerable<EntityEntry> entries = context.ChangeTracker.Entries()
             .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified);
 
-        foreach (var entry in entries)
+        foreach (EntityEntry entry in entries)
         {
-            var props = entry.Entity.GetType().GetProperties()
-                .Where(p => Attribute.IsDefined(p, typeof(LocalizedAttribute)));
+            var props = entry.Entity.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
-            foreach (var prop in props)
+            foreach (PropertyInfo prop in props)
             {
-                var attr = (LocalizedAttribute)Attribute.GetCustomAttribute(prop, typeof(LocalizedAttribute))!;
-                var culture = attr.Culture ?? Thread.CurrentThread.CurrentCulture.Name;
-                var value = prop.GetValue(entry.Entity)?.ToString() ?? string.Empty;
+                if (!Attribute.IsDefined(prop, typeof(LocalizedAttribute))) continue;
 
-                // Main value
-                await UpsertTranslation(_tenantId, culture, attr.Key, value, cancellationToken);
+                LocalizedAttribute attr = (LocalizedAttribute)Attribute.GetCustomAttribute(prop, typeof(LocalizedAttribute))!;
+                string culture = attr.Culture ?? Thread.CurrentThread.CurrentUICulture.Name;
 
-                // Error message
+                string value = prop.GetValue(entry.Entity)?.ToString() ?? string.Empty;
+                await UpsertLocalizationAsync(tenantId, culture, attr.Key, value, cancellationToken).ConfigureAwait(false);
+
                 if (!string.IsNullOrEmpty(attr.ErrorMessageKey))
                 {
-                    await UpsertTranslation(_tenantId, culture, attr.ErrorMessageKey, $"{prop.Name} is required", cancellationToken);
+                    await UpsertLocalizationAsync(tenantId, culture, attr.ErrorMessageKey, $"{prop.Name} is required", cancellationToken).ConfigureAwait(false);
                 }
 
-                // Display name
                 if (!string.IsNullOrEmpty(attr.DisplayNameKey))
                 {
-                    await UpsertTranslation(_tenantId, culture, attr.DisplayNameKey, prop.Name, cancellationToken);
+                    await UpsertLocalizationAsync(tenantId, culture, attr.DisplayNameKey, prop.Name, cancellationToken).ConfigureAwait(false);
                 }
 
-                // Display message (tooltip/info)
                 if (!string.IsNullOrEmpty(attr.DisplayMessageKey))
                 {
-                    await UpsertTranslation(_tenantId, culture, attr.DisplayMessageKey, $"Info about {prop.Name}", cancellationToken);
+                    await UpsertLocalizationAsync(tenantId, culture, attr.DisplayMessageKey, $"Info about {prop.Name}", cancellationToken).ConfigureAwait(false);
                 }
             }
         }
 
-        await _localizationDb.SaveChangesAsync(cancellationToken);
+        await _localizationDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return result;
     }
 
-    /// <summary>
-    /// Inserts or updates a translation record for the specified tenant, culture, and key.
-    /// </summary>
-    /// <param name="tenantId">The tenant identifier for the translation.</param>
-    /// <param name="culture">The culture identifier for the translation.</param>
-    /// <param name="key">The translation key to upsert.</param>
-    /// <param name="value">The translation value to store.</param>
-    /// <param name="cancellationToken">A cancellation token that can be used to cancel the asynchronous operation.</param>
-    private async Task UpsertTranslation(string tenantId, string culture, string key, string value, CancellationToken cancellationToken)
+    private async Task UpsertLocalizationAsync(string? tenantId, string culture, string key, string value, CancellationToken cancellationToken)
     {
-        var existing = await _localizationDb.Translations
-            .FirstOrDefaultAsync(t => t.TenantId == tenantId && t.Culture == culture && t.Key == key, cancellationToken);
+        if (string.IsNullOrWhiteSpace(key))
+            return;
+
+        // Ensure key exists
+        var keyEntity = await _localizationDb.LocalizationKeys
+            .FirstOrDefaultAsync(k => k.Key == key, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (keyEntity == null)
+        {
+            keyEntity = new LocalizationKey { Key = key };
+            _localizationDb.LocalizationKeys.Add(keyEntity);
+            await _localizationDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        var existing = await _localizationDb.LocalizationValues
+            .FirstOrDefaultAsync(v =>
+                v.LocalizationKeyId == keyEntity.Id &&
+                v.TenantId == tenantId &&
+                v.Culture == culture, cancellationToken)
+            .ConfigureAwait(false);
 
         if (existing == null)
         {
-            _localizationDb.Translations.Add(new Translation
+            _localizationDb.LocalizationValues.Add(new LocalizationValue
             {
+                LocalizationKeyId = keyEntity.Id,
                 TenantId = tenantId,
                 Culture = culture,
-                Key = key,
-                Value = value
+                Value = value,
+                IsSystem = true
             });
         }
-        else if (existing.Value != value)
+        else if (!string.Equals(existing.Value, value, StringComparison.Ordinal))
         {
-            existing.Value = value;
+            // Interceptor keeps defaults in sync; only overwrite system values.
+            if (existing.IsSystem)
+                existing.Value = value;
         }
     }
 }

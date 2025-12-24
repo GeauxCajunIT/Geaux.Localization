@@ -1,0 +1,177 @@
+@using Microsoft.AspNetCore.Components.Forms
+@inject TranslationAdminService Admin
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6">Import Translations</MudText>
+
+        <MudTabs Rounded="true" Class="mt-3" @bind-ActivePanelIndex="_tab">
+            <MudTabPanel Text="CSV">
+                <MudText Typo="Typo.body2" Class="mb-2">
+                    CSV header required: <code>TenantId,Culture,Key,Value</code>
+                </MudText>
+
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                    <label for="csvFile">
+                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.UploadFile">Choose CSV</MudButton>
+                    </label>
+                    <InputFile id="csvFile" style="display:none" accept=".csv,text/csv" OnChange="OnCsvSelected" />
+                    <MudText Typo="Typo.body2">@_fileName</MudText>
+                </MudStack>
+
+                @if (_previewRows.Count > 0)
+                {
+                    <MudDivider Class="my-3" />
+                    <MudText Typo="Typo.subtitle2">Preview (first @Math.Min(10, _previewRows.Count))</MudText>
+                    <MudTable Dense="true" Items="_previewRows.Take(10)">
+                        <HeaderContent>
+                            <MudTh>TenantId</MudTh><MudTh>Culture</MudTh><MudTh>Key</MudTh><MudTh>Value</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>@context.TenantId</MudTd>
+                            <MudTd>@context.Culture</MudTd>
+                            <MudTd><code>@context.Key</code></MudTd>
+                            <MudTd>@context.Value</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-2">
+                        Will upsert by (TenantId, Culture, Key).
+                    </MudAlert>
+                }
+            </MudTabPanel>
+
+            <MudTabPanel Text="JSON">
+                <MudText Typo="Typo.body2" Class="mb-2">
+                    JSON should be an array of objects with: TenantId, Culture, Key, Value.
+                </MudText>
+
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                    <label for="jsonFile">
+                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Upload">Choose JSON</MudButton>
+                    </label>
+                    <InputFile id="jsonFile" style="display:none" accept=".json,application/json" OnChange="OnJsonSelected" />
+                    <MudText Typo="Typo.body2">@_fileName</MudText>
+                </MudStack>
+
+                @if (_previewRows.Count > 0)
+                {
+                    <MudDivider Class="my-3" />
+                    <MudText Typo="Typo.subtitle2">Preview (first @Math.Min(10, _previewRows.Count))</MudText>
+                    <MudTable Dense="true" Items="_previewRows.Take(10)">
+                        <HeaderContent>
+                            <MudTh>TenantId</MudTh><MudTh>Culture</MudTh><MudTh>Key</MudTh><MudTh>Value</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>@context.TenantId</MudTd>
+                            <MudTd>@context.Culture</MudTd>
+                            <MudTd><code>@context.Key</code></MudTd>
+                            <MudTd>@context.Value</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-2">
+                        Will upsert by (TenantId, Culture, Key).
+                    </MudAlert>
+                }
+            </MudTabPanel>
+        </MudTabs>
+
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mt-3">@_error</MudAlert>
+        }
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!_ready)" OnClick="Import">Import</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    private int _tab; // 0=CSV, 1=JSON
+    private string _fileName = "";
+    private string _content = "";
+    private string? _error;
+    private bool _ready;
+
+    private List<Geaux.Localization.Models.Translation> _previewRows = new();
+
+    private async Task OnCsvSelected(InputFileChangeEventArgs e)
+    {
+        await ReadFile(e.File);
+        TryPreviewCsv();
+    }
+
+    private async Task OnJsonSelected(InputFileChangeEventArgs e)
+    {
+        await ReadFile(e.File);
+        TryPreviewJson();
+    }
+
+    private async Task ReadFile(IBrowserFile file)
+    {
+        _error = null;
+        _ready = false;
+        _previewRows.Clear();
+        _fileName = $"{file.Name} ({file.Size / 1024} KB)";
+
+        try
+        {
+            using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            using var reader = new StreamReader(stream);
+            _content = await reader.ReadToEndAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private void TryPreviewCsv()
+    {
+        try
+        {
+            _previewRows = Admin.ParsePreviewCsv(_content).ToList();
+            _ready = _previewRows.Count > 0;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private void TryPreviewJson()
+    {
+        try
+        {
+            _previewRows = Admin.ParsePreviewJson(_content).ToList();
+            _ready = _previewRows.Count > 0;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task Import()
+    {
+        try
+        {
+            int count = _tab == 0
+                ? await Admin.ImportCsvAsync(_content)
+                : await Admin.ImportJsonAsync(_content);
+
+            Snackbar.Add($"Imported/Upserted {count} records.", Severity.Success);
+            Dialog.Close(DialogResult.Ok(count));
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private void Cancel() => Dialog.Cancel();
+}
