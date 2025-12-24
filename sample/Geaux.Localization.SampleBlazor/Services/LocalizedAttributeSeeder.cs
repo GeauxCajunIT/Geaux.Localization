@@ -82,18 +82,33 @@ public static class LocalizedAttributeSeeder
     bool overwrite,
     CancellationToken ct)
     {
-        var existing = await db.Translations.FirstOrDefaultAsync(x =>
-            x.TenantId == tenantId &&
-            x.Culture == culture &&
-            x.Key == key, ct);
+        tenantId = string.IsNullOrWhiteSpace(tenantId) ? null : tenantId;
 
-        if (existing is null)
-        {
-            db.Translations.Add(new Translation
+        // 1. Ensure key exists
+        LocalizationKey k = await db.LocalizationKeys
+            .FirstOrDefaultAsync(x => x.Key == key, ct)
+            ?? db.LocalizationKeys.Add(new LocalizationKey
             {
-                TenantId = tenantId,
-                Culture = culture,
                 Key = key,
+                IsSystem = true
+            }).Entity;
+
+        await db.SaveChangesAsync(ct); // ensure key has Id
+
+        // 2. Upsert value
+        LocalizationValue? existing = await db.LocalizationValues.FirstOrDefaultAsync(v =>
+            v.LocalizationKeyId == k.Id &&
+            v.Culture == culture &&
+            v.TenantId == tenantId,
+            ct);
+
+        if (existing == null)
+        {
+            db.LocalizationValues.Add(new LocalizationValue
+            {
+                LocalizationKeyId = k.Id,
+                Culture = culture,
+                TenantId = tenantId,
                 Value = value
             });
             return;
@@ -104,6 +119,7 @@ public static class LocalizedAttributeSeeder
             existing.Value = value;
         }
     }
+
 
 
     private static string MakeDefaultValue(Type modelType, PropertyInfo prop, string key)

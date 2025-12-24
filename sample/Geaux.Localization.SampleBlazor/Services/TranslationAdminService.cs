@@ -6,273 +6,235 @@ using System.Text.Json;
 
 namespace Geaux.Localization.SampleBlazor.Services;
 
-/// <summary>
-/// Simple admin service for CRUD + bulk import/export operations on translations.
-/// </summary>
 public sealed class TranslationAdminService
 {
-    private readonly IDbContextFactory<GeauxLocalizationDbContext> _dbFactory;
+    private readonly IDbContextFactory<GeauxLocalizationDbContext> _factory;
 
-    public TranslationAdminService(IDbContextFactory<GeauxLocalizationDbContext> dbFactory)
+    public TranslationAdminService(IDbContextFactory<GeauxLocalizationDbContext> factory)
+        => _factory = factory;
+
+    public async Task<List<LocalizationKey>> SearchKeysAsync(string? search, int take = 200)
     {
-        _dbFactory = dbFactory;
-    }
+        await using GeauxLocalizationDbContext db = await _factory.CreateDbContextAsync();
 
-    public async Task<List<Translation>> ListAsync(string? tenantId, string? culture, string? search, CancellationToken ct = default)
-    {
-        await using GeauxLocalizationDbContext db = await _dbFactory.CreateDbContextAsync(ct);
-
-        IQueryable<Translation> q = db.Translations.AsNoTracking();
-
-        tenantId = string.IsNullOrWhiteSpace(tenantId) ? null : tenantId.Trim();
-
-        if (tenantId != null)
-            q = q.Where(t => t.TenantId == tenantId);
-        else
-            q = q.Where(t => t.TenantId == null);
-
-        if (!string.IsNullOrWhiteSpace(culture))
-            q = q.Where(t => t.Culture == culture.Trim());
+        IQueryable<LocalizationKey> q = db.LocalizationKeys.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(search))
+            q = q.Where(k => k.Key.Contains(search));
+
+        return await q.OrderBy(k => k.Key).Take(take).ToListAsync();
+    }
+
+    public async Task<LocalizationKey> GetOrCreateKeyAsync(string key, bool isSystem = true)
+    {
+        await using GeauxLocalizationDbContext db = await _factory.CreateDbContextAsync();
+
+        LocalizationKey? existing = await db.LocalizationKeys.FirstOrDefaultAsync(k => k.Key == key);
+        if (existing != null) return existing;
+
+        LocalizationKey created = new LocalizationKey { Key = key, IsSystem = isSystem };
+        db.LocalizationKeys.Add(created);
+        await db.SaveChangesAsync();
+        return created;
+    }
+
+    public async Task<string?> GetValueAsync(string key, string culture, string? tenantId)
+    {
+        await using GeauxLocalizationDbContext db = await _factory.CreateDbContextAsync();
+
+        return await db.LocalizationValues.AsNoTracking()
+            .Where(v => v.LocalizationKey.Key == key &&
+                        v.Culture == culture &&
+                        v.TenantId == tenantId)
+            .Select(v => v.Value)
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task UpsertValueAsync(string key, string culture, string? tenantId, string value)
+    {
+        tenantId = string.IsNullOrWhiteSpace(tenantId) ? null : tenantId;
+
+        await using GeauxLocalizationDbContext db = await _factory.CreateDbContextAsync();
+
+        LocalizationKey k = await db.LocalizationKeys.FirstOrDefaultAsync(x => x.Key == key)
+            ?? (db.LocalizationKeys.Add(new LocalizationKey { Key = key, IsSystem = true }).Entity);
+
+        await db.SaveChangesAsync(); // ensure key has Id
+
+        LocalizationValue? row = await db.LocalizationValues.FirstOrDefaultAsync(v =>
+            v.LocalizationKeyId == k.Id &&
+            v.Culture == culture &&
+            v.TenantId == tenantId);
+
+        if (row == null)
         {
-            var s = search.Trim();
-            q = q.Where(t => t.Key.Contains(s) || t.Value.Contains(s));
+            db.LocalizationValues.Add(new LocalizationValue
+            {
+                LocalizationKeyId = k.Id,
+                Culture = culture,
+                TenantId = tenantId,
+                Value = value
+            });
+        }
+        else
+        {
+            row.Value = value;
         }
 
-        return await q
-            .OrderBy(t => t.Culture)
-            .ThenBy(t => t.Key)
-            .ToListAsync(ct);
+        await db.SaveChangesAsync();
     }
 
-    public async Task<Translation?> GetAsync(int id, CancellationToken ct = default)
+    // --- Bulk CSV ---
+    // CSV format: Key,Culture,TenantId,Value
+    public async Task<byte[]> ExportCsvAsync(string? search = null)
     {
-        await using GeauxLocalizationDbContext db = await _dbFactory.CreateDbContextAsync(ct);
-        return await db.Translations.AsNoTracking().FirstOrDefaultAsync(t => t.Id == id, ct);
-    }
+        await using GeauxLocalizationDbContext db = await _factory.CreateDbContextAsync();
 
-    public async Task<int> CreateAsync(Translation translation, CancellationToken ct = default)
-    {
-        Normalize(translation);
+        var q = db.LocalizationValues.AsNoTracking()
+            .Select(v => new { v.LocalizationKey.Key, v.Culture, v.TenantId, v.Value });
 
-        await using GeauxLocalizationDbContext db = await _dbFactory.CreateDbContextAsync(ct);
-        db.Translations.Add(translation);
-        await db.SaveChangesAsync(ct);
-        return translation.Id;
-    }
+        if (!string.IsNullOrWhiteSpace(search))
+            q = q.Where(x => x.Key.Contains(search));
 
-    public async Task UpdateAsync(Translation translation, CancellationToken ct = default)
-    {
-        Normalize(translation);
+        var rows = await q.OrderBy(x => x.Key).ThenBy(x => x.Culture).ToListAsync();
 
-        await using GeauxLocalizationDbContext db = await _dbFactory.CreateDbContextAsync(ct);
-        db.Translations.Update(translation);
-        await db.SaveChangesAsync(ct);
-    }
+        StringBuilder sb = new StringBuilder();
+        sb.AppendLine("Key,Culture,TenantId,Value");
 
-    public async Task DeleteAsync(int id, CancellationToken ct = default)
-    {
-        await using GeauxLocalizationDbContext db = await _dbFactory.CreateDbContextAsync(ct);
-        Translation? entity = await db.Translations.FirstOrDefaultAsync(t => t.Id == id, ct);
-        if (entity == null) return;
-        db.Translations.Remove(entity);
-        await db.SaveChangesAsync(ct);
-    }
-
-    // -------- Bulk export --------
-
-    public async Task<byte[]> ExportJsonAsync(string? tenantId, string? culture, string? search, CancellationToken ct = default)
-    {
-        List<Translation> rows = await ListAsync(tenantId, culture, search, ct);
-        var json = JsonSerializer.Serialize(rows, new JsonSerializerOptions { WriteIndented = true });
-        return Encoding.UTF8.GetBytes(json);
-    }
-
-    public async Task<byte[]> ExportCsvAsync(string? tenantId, string? culture, string? search, CancellationToken ct = default)
-    {
-        List<Translation> rows = await ListAsync(tenantId, culture, search, ct);
-        var sb = new StringBuilder();
-        sb.AppendLine("TenantId,Culture,Key,Value");
-
-        foreach (Translation r in rows)
+        foreach (var r in rows)
         {
-            sb.Append(EscapeCsv(r.TenantId));
-            sb.Append(',');
-            sb.Append(EscapeCsv(r.Culture));
-            sb.Append(',');
-            sb.Append(EscapeCsv(r.Key));
-            sb.Append(',');
-            sb.Append(EscapeCsv(r.Value));
-            sb.AppendLine();
+            sb.Append(Escape(r.Key)).Append(',')
+              .Append(Escape(r.Culture)).Append(',')
+              .Append(Escape(r.TenantId ?? "")).Append(',')
+              .Append(Escape(r.Value)).AppendLine();
         }
 
         return Encoding.UTF8.GetBytes(sb.ToString());
     }
 
-    // -------- Bulk import (upsert) --------
-
-    public async Task<int> ImportJsonAsync(string json, CancellationToken ct = default)
+    public async Task ImportCsvAsync(Stream csvStream)
     {
-        List<Translation> rows = JsonSerializer.Deserialize<List<Translation>>(json) ?? new List<Translation>();
-        return await UpsertManyAsync(rows, ct);
-    }
+        using StreamReader reader = new StreamReader(csvStream, Encoding.UTF8, leaveOpen: true);
+        var header = await reader.ReadLineAsync(); // Key,Culture,TenantId,Value
+        if (header == null) return;
 
-    public async Task<int> ImportCsvAsync(string csv, CancellationToken ct = default)
-    {
-        var rows = ParsePreviewCsv(csv).ToList();
-        return await UpsertManyAsync(rows, ct);
-    }
-
-    // -------- Preview parsing (UI) --------
-
-    public IEnumerable<Translation> ParsePreviewJson(string json)
-    {
-        List<Translation> rows = JsonSerializer.Deserialize<List<Translation>>(json) ?? new List<Translation>();
-        foreach (Translation r in rows)
+        while (!reader.EndOfStream)
         {
-            Normalize(r);
-            if (!string.IsNullOrWhiteSpace(r.Culture) && !string.IsNullOrWhiteSpace(r.Key))
-                yield return r;
-        }
-    }
+            var line = await reader.ReadLineAsync();
+            if (string.IsNullOrWhiteSpace(line)) continue;
 
-    public IEnumerable<Translation> ParsePreviewCsv(string csv)
-    {
-        // Normalize line endings, split, keep non-empty
-        var lines = csv.Replace("\r\n", "\n").Replace("\r", "\n")
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries);
-
-        if (lines.Length <= 1)
-            yield break;
-
-        // Expect header: TenantId,Culture,Key,Value
-        for (int i = 1; i < lines.Length; i++)
-        {
-            List<string> cols = ParseCsvLine(lines[i]);
+            List<string> cols = ParseCsvLine(line);
             if (cols.Count < 4) continue;
 
-            var t = new Translation
-            {
-                TenantId = string.IsNullOrWhiteSpace(cols[0]) ? null : cols[0],
-                Culture = cols[1],
-                Key = cols[2],
-                Value = cols[3]
-            };
+            var key = cols[0];
+            var culture = cols[1];
+            var tenant = string.IsNullOrWhiteSpace(cols[2]) ? null : cols[2];
+            var value = cols[3];
 
-            Normalize(t);
-
-            if (!string.IsNullOrWhiteSpace(t.Culture) && !string.IsNullOrWhiteSpace(t.Key))
-                yield return t;
+            await UpsertValueAsync(key, culture, tenant, value);
         }
     }
 
-    private async Task<int> UpsertManyAsync(List<Translation> rows, CancellationToken ct)
+    // --- Bulk JSON ---
+    // JSON array: [{ "key":"X", "culture":"en-US", "tenantId":null, "value":"..." }]
+    public async Task<byte[]> ExportJsonAsync(string? search = null)
     {
-        if (rows.Count == 0) return 0;
+        await using GeauxLocalizationDbContext db = await _factory.CreateDbContextAsync();
 
-        foreach (Translation r in rows) Normalize(r);
+        var q = db.LocalizationValues.AsNoTracking()
+            .Select(v => new { key = v.LocalizationKey.Key, culture = v.Culture, tenantId = v.TenantId, value = v.Value });
 
-        await using GeauxLocalizationDbContext db = await _dbFactory.CreateDbContextAsync(ct);
+        if (!string.IsNullOrWhiteSpace(search))
+            q = q.Where(x => x.key.Contains(search));
 
-        int upserted = 0;
-
-        foreach (Translation r in rows)
-        {
-            if (string.IsNullOrWhiteSpace(r.Culture) || string.IsNullOrWhiteSpace(r.Key))
-                continue;
-
-            Translation? existing = await db.Translations.FirstOrDefaultAsync(t =>
-                t.TenantId == r.TenantId &&
-                t.Culture == r.Culture &&
-                t.Key == r.Key, ct);
-
-            if (existing == null)
-            {
-                db.Translations.Add(new Translation
-                {
-                    TenantId = r.TenantId,
-                    Culture = r.Culture,
-                    Key = r.Key,
-                    Value = r.Value ?? ""
-                });
-            }
-            else
-            {
-                existing.Value = r.Value ?? "";
-            }
-
-            upserted++;
-        }
-
-        await db.SaveChangesAsync(ct);
-        return upserted;
+        var rows = await q.ToListAsync();
+        return JsonSerializer.SerializeToUtf8Bytes(rows, new JsonSerializerOptions { WriteIndented = true });
     }
 
-    private static void Normalize(Translation t)
+    public async Task ImportJsonAsync(Stream jsonStream)
     {
-        t.TenantId = string.IsNullOrWhiteSpace(t.TenantId) ? null : t.TenantId.Trim();
-        t.Culture = (t.Culture ?? "en-US").Trim();
-        t.Key = (t.Key ?? "").Trim();
-        t.Value = t.Value ?? "";
+        List<JsonRow> items = await JsonSerializer.DeserializeAsync<List<JsonRow>>(jsonStream)
+                    ?? new();
+
+        foreach (JsonRow i in items)
+            await UpsertValueAsync(i.key, i.culture, i.tenantId, i.value);
     }
 
-    private static string EscapeCsv(string? value)
-    {
-        value ??= "";
-        if (value.Contains('"') || value.Contains(',') || value.Contains('\n') || value.Contains('\r'))
-        {
-            value = value.Replace("\"", "\"\"");
-            return $"\"{value}\"";
-        }
-        return value;
-    }
+    private sealed record JsonRow(string key, string culture, string? tenantId, string value);
+
+    private static string Escape(string s)
+        => "\"" + s.Replace("\"", "\"\"") + "\"";
 
     private static List<string> ParseCsvLine(string line)
     {
-        var result = new List<string>();
-        var sb = new StringBuilder();
+        List<string> result = new List<string>();
+        StringBuilder sb = new StringBuilder();
         bool inQuotes = false;
 
         for (int i = 0; i < line.Length; i++)
         {
-            char c = line[i];
+            var c = line[i];
 
-            if (inQuotes)
+            if (c == '"')
             {
-                if (c == '"' && i + 1 < line.Length && line[i + 1] == '"')
+                if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
                 {
                     sb.Append('"');
-                    i++; // skip escaped quote
+                    i++;
                 }
-                else if (c == '"')
-                {
-                    inQuotes = false;
-                }
-                else
-                {
-                    sb.Append(c);
-                }
+                else inQuotes = !inQuotes;
             }
-            else
+            else if (c == ',' && !inQuotes)
             {
-                if (c == ',')
-                {
-                    result.Add(sb.ToString());
-                    sb.Clear();
-                }
-                else if (c == '"')
-                {
-                    inQuotes = true;
-                }
-                else
-                {
-                    sb.Append(c);
-                }
+                result.Add(sb.ToString());
+                sb.Clear();
             }
+            else sb.Append(c);
         }
 
         result.Add(sb.ToString());
         return result;
     }
+
+    public sealed record ImportPreviewRow(string Key, string Culture, string? TenantId, string Value);
+
+    public List<ImportPreviewRow> ParsePreviewCsv(string csvText, int maxRows = 50)
+    {
+        List<ImportPreviewRow> rows = new List<ImportPreviewRow>();
+        using StringReader reader = new StringReader(csvText);
+
+        // Header
+        var header = reader.ReadLine();
+        if (header == null) return rows;
+
+        string? line;
+        while ((line = reader.ReadLine()) != null && rows.Count < maxRows)
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            var cols = ParseCsvLine(line);
+            if (cols.Count < 4) continue;
+
+            rows.Add(new ImportPreviewRow(
+                cols[0],
+                cols[1],
+                string.IsNullOrWhiteSpace(cols[2]) ? null : cols[2],
+                cols[3]
+            ));
+        }
+
+        return rows;
+    }
+
+    public List<ImportPreviewRow> ParsePreviewJson(string jsonText, int maxRows = 50)
+    {
+        var rows = System.Text.Json.JsonSerializer.Deserialize<List<ImportPreviewRowJson>>(jsonText)
+                   ?? new();
+
+        return rows.Take(maxRows)
+                   .Select(x => new ImportPreviewRow(x.key, x.culture, x.tenantId, x.value))
+                   .ToList();
+    }
+
+    private sealed record ImportPreviewRowJson(string key, string culture, string? tenantId, string value);
+
 }

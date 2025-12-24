@@ -15,10 +15,6 @@ builder.Services.AddMudServices();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-IConfigurationSection loc = builder.Configuration.GetSection("Localization");
-Console.WriteLine("Provider=" + loc["Provider"]);
-Console.WriteLine("Conn=" + loc["ConnectionString"]);
-
 builder.Services.AddGeauxLocalization(builder.Configuration.GetSection("Localization"));
 
 builder.Services.AddScoped<TranslationAdminService>();
@@ -108,9 +104,9 @@ static async Task InitializeLocalizationDbAsync(WebApplication app)
     IDbContextFactory<GeauxLocalizationDbContext> factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<GeauxLocalizationDbContext>>();
     await using GeauxLocalizationDbContext db = await factory.CreateDbContextAsync();
 
-    var provider = db.Database.ProviderName ?? "";
-    var isSqlite = provider.Contains("Sqlite", StringComparison.OrdinalIgnoreCase);
-    var isSqlServer = provider.Contains("SqlServer", StringComparison.OrdinalIgnoreCase);
+    string provider = db.Database.ProviderName ?? "";
+    bool isSqlite = provider.Contains("Sqlite", StringComparison.OrdinalIgnoreCase);
+    bool isSqlServer = provider.Contains("SqlServer", StringComparison.OrdinalIgnoreCase);
 
     if (isSqlite)
     {

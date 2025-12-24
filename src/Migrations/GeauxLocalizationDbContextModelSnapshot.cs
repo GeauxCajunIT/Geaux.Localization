@@ -59,9 +59,6 @@ namespace Geaux.Localization.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<bool>("IsSystem")
-                        .HasColumnType("bit");
-
                     b.Property<int>("LocalizationKeyId")
                         .HasColumnType("int");
 

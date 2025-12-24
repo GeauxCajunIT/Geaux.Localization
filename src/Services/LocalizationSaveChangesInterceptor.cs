@@ -38,7 +38,7 @@ public sealed class LocalizationSaveChangesInterceptor : SaveChangesInterceptor
         DbContextOptionsBuilder<GeauxLocalizationDbContext> builder = new DbContextOptionsBuilder<GeauxLocalizationDbContext>();
 
         string provider = (_options.Provider ?? "SqlServer").Trim();
-        var providerKey = provider.ToLowerInvariant();
+        string providerKey = provider.ToLowerInvariant();
         string connectionString = ResolveConnectionString(_options, configuration);
 
         switch (providerKey)
@@ -164,15 +164,13 @@ public sealed class LocalizationSaveChangesInterceptor : SaveChangesInterceptor
                 LocalizationKeyId = keyEntity.Id,
                 TenantId = tenantId,
                 Culture = culture,
-                Value = value,
-                IsSystem = true
+                Value = value
             });
         }
         else if (!string.Equals(existing.Value, value, StringComparison.Ordinal))
         {
             // Interceptor keeps defaults in sync; only overwrite system values.
-            if (existing.IsSystem)
-                existing.Value = value;
+
         }
     }
 }

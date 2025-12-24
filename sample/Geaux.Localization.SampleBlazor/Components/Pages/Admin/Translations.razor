@@ -1,181 +1,168 @@
 @page "/admin/translations"
-@layout Geaux.Localization.SampleBlazor.Components.Layouts.AdminLayout
-
+@using Geaux.Localization.SampleBlazor.Services
 @inject TranslationAdminService Admin
 @inject ISnackbar Snackbar
-@inject IJSRuntime JS
-@inject IDialogService DialogService
 
-<MudStack Spacing="3">
-    <MudPaper Class="pa-4" Elevation="1">
-        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-            <MudText Typo="Typo.h6">Translations</MudText>
-            <MudSpacer />
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Upload" OnClick="OpenImport">Import</MudButton>
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" OnClick="ExportJson">Export JSON</MudButton>
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.FileDownload" OnClick="ExportCsv">Export CSV</MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AddRow">Add</MudButton>
-        </MudStack>
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-0">
+    <MudGrid Spacing="2">
+        <!-- LEFT: Keys -->
+        <MudItem xs="12" md="4">
+            <MudPaper Class="pa-3" Elevation="1">
+                <MudText Typo="Typo.h6">Keys</MudText>
 
-        <MudGrid Class="mt-3" Spacing="2">
-            <MudItem xs="12" sm="4">
-                <MudTextField @bind-Value="_tenantId" Label="TenantId (blank = global)" Placeholder="(global)" />
-            </MudItem>
-            <MudItem xs="12" sm="4">
-                <MudTextField @bind-Value="_culture" Label="Culture" Placeholder="en-US" />
-            </MudItem>
-            <MudItem xs="12" sm="4">
-                <MudTextField @bind-Value="_search" Label="Search (key/value)" />
-            </MudItem>
-        </MudGrid>
+                <MudTextField @bind-Value="_search"
+                              Placeholder="Search keys..."
+                              Immediate="true"
+                              Margin="Margin.Dense"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search" />
 
-        <MudStack Row="true" Spacing="2" Class="mt-3">
-            <MudButton Variant="Variant.Outlined" OnClick="Load" StartIcon="@Icons.Material.Filled.Refresh">Refresh</MudButton>
-            <MudButton Variant="Variant.Text" OnClick="ClearFilters">Clear</MudButton>
-        </MudStack>
-    </MudPaper>
+                <MudButton Variant="Variant.Filled"
+                           Size="Size.Small"
+                           Color="Color.Primary"
+                           Class="mt-2"
+                           OnClick="LoadKeys">
+                    Refresh
+                </MudButton>
 
-    <MudPaper Class="pa-2" Elevation="1">
-        <MudDataGrid T="Geaux.Localization.Models.Translation"
-                     Items="_rows"
-                     Dense="true"
-                     Hover="true"
-                     Bordered="true"
-                     Striped="true"
-                     Filterable="false"
-                     SortMode="SortMode.Multiple"
-                     EditMode="DataGridEditMode.Cell"
-                     RowEditCommit="OnRowCommit">
-            <Columns>
-                <PropertyColumn Property="x => x.Id" Title="Id" Editable="false" />
-                <PropertyColumn Property="x => x.TenantId" Title="TenantId" />
-                <PropertyColumn Property="x => x.Culture" Title="Culture" />
-                <PropertyColumn Property="x => x.Key" Title="Key" />
-                <PropertyColumn Property="x => x.Value" Title="Value" />
-                <TemplateColumn Title="Actions">
-                    <CellTemplate>
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                       Color="Color.Error"
+                <MudList T="string" Dense="true" Class="mt-2" Style="max-height:60vh; overflow:auto;">
+                    @foreach (var k in _keys)
+                    {
+                        <MudListItem T="string"
+                                     Value="@k.Key"
+                                     Selected="@(_selectedKey == k.Key)"
+                                     OnClick="@(() => SelectKey(k.Key))">
+                            <MudText>@k.Key</MudText>
+                        </MudListItem>
+                    }
+                </MudList>
+            </MudPaper>
+        </MudItem>
+
+        <!-- RIGHT: Values -->
+        <MudItem xs="12" md="8">
+            <MudPaper Class="pa-3" Elevation="1">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudText Typo="Typo.h6">Translations</MudText>
+
+                    <MudStack Row="true" Spacing="1">
+                        <MudIconButton Icon="@Icons.Material.Filled.Upload"
                                        Size="Size.Small"
-                                       OnClick="@(()=>Delete(context.Item))" />
-                    </CellTemplate>
-                </TemplateColumn>
-            </Columns>
-        </MudDataGrid>
-    </MudPaper>
-</MudStack>
+                                       OnClick="@(() => _showImport = true)" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Download"
+                                       Size="Size.Small"
+                                       OnClick="ExportCsv" />
+                        <MudIconButton Icon="@Icons.Material.Filled.DataObject"
+                                       Size="Size.Small"
+                                       OnClick="ExportJson" />
+                    </MudStack>
+                </MudStack>
+
+                @if (string.IsNullOrWhiteSpace(_selectedKey))
+                {
+                    <MudText Class="mt-4">Select a key on the left.</MudText>
+                }
+                else
+                {
+                    <MudText Class="mt-2"><b>Key:</b> @_selectedKey</MudText>
+
+                    <MudTable Items="_rows" Dense="true" Hover="true" Class="mt-3">
+                        <HeaderContent>
+                            <MudTh>Culture</MudTh>
+                            <MudTh>Tenant</MudTh>
+                            <MudTh>Value</MudTh>
+                            <MudTh></MudTh>
+                        </HeaderContent>
+
+                        <RowTemplate>
+                            <MudTd>@context.Culture</MudTd>
+                            <MudTd>@(context.TenantId ?? "(global)")</MudTd>
+                            <MudTd Style="width:60%;">
+                                <MudTextField @bind-Value="context.Value"
+                                              Margin="Margin.Dense" />
+                            </MudTd>
+                            <MudTd>
+                                <MudButton Size="Size.Small"
+                                           Variant="Variant.Filled"
+                                           OnClick="@(() => Save(context))">
+                                    Save
+                                </MudButton>
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+<ImportTranslationsDialog Visible="@_showImport"
+                          VisibleChanged="@(v => _showImport = v)"
+                          OnImported="ReloadAfterImport" />
 
 @code {
-    private List<Geaux.Localization.Models.Translation> _rows = new();
-
-    private string? _tenantId;
-    private string? _culture;
     private string? _search;
+    private List<dynamic> _keys = new();
+    private string? _selectedKey;
+    private bool _showImport;
+
+    private readonly string[] _cultures = new[] { "en-US", "fr-FR" };
+    private List<Row> _rows = new();
 
     protected override async Task OnInitializedAsync()
-    {
-        await Load();
-    }
+        => await LoadKeys();
 
-    private async Task Load()
-    {
-        var tenant = string.IsNullOrWhiteSpace(_tenantId) ? null : _tenantId;
-        _rows = await Admin.ListAsync(tenant, _culture, _search);
-    }
+    private async Task LoadKeys()
+        => _keys = (await Admin.SearchKeysAsync(_search)).Cast<dynamic>().ToList();
 
-    private void ClearFilters()
+    private async Task SelectKey(string key)
     {
-        _tenantId = null;
-        _culture = null;
-        _search = null;
-    }
+        _selectedKey = key;
+        _rows.Clear();
 
-    private void AddRow()
-    {
-        _rows.Insert(0, new Geaux.Localization.Models.Translation
+        foreach (var c in _cultures)
         {
-            Id = 0,
-            TenantId = string.IsNullOrWhiteSpace(_tenantId) ? null : _tenantId,
-            Culture = string.IsNullOrWhiteSpace(_culture) ? "en-US" : _culture!,
-            Key = "",
-            Value = ""
-        });
-    }
-
-    private async Task OnRowCommit(Geaux.Localization.Models.Translation item)
-    {
-        try
-        {
-            item.TenantId = string.IsNullOrWhiteSpace(item.TenantId) ? null : item.TenantId.Trim();
-            item.Culture = (item.Culture ?? "en-US").Trim();
-            item.Key = (item.Key ?? "").Trim();
-            item.Value ??= "";
-
-            if (string.IsNullOrWhiteSpace(item.Culture) || string.IsNullOrWhiteSpace(item.Key))
-            {
-                Snackbar.Add("Culture and Key are required.", Severity.Error);
-                return;
-            }
-
-            if (item.Id == 0)
-            {
-                var newId = await Admin.CreateAsync(new Geaux.Localization.Models.Translation
-                {
-                    TenantId = item.TenantId,
-                    Culture = item.Culture,
-                    Key = item.Key,
-                    Value = item.Value
-                });
-                item.Id = newId;
-                Snackbar.Add("Created.", Severity.Success);
-            }
-            else
-            {
-                await Admin.UpdateAsync(item);
-                Snackbar.Add("Updated.", Severity.Success);
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add(ex.Message, Severity.Error);
+            var v = await Admin.GetValueAsync(key, c, null) ?? "";
+            _rows.Add(new Row { Culture = c, Value = v });
         }
     }
 
-    private async Task Delete(Geaux.Localization.Models.Translation item)
+    private async Task Save(Row row)
     {
-        if (item.Id == 0)
-        {
-            _rows.Remove(item);
-            return;
-        }
-
-        await Admin.DeleteAsync(item.Id);
-        Snackbar.Add("Deleted.", Severity.Success);
-        await Load();
-    }
-
-    private async Task ExportJson()
-    {
-        var tenant = string.IsNullOrWhiteSpace(_tenantId) ? null : _tenantId;
-        var bytes = await Admin.ExportJsonAsync(tenant, _culture, _search);
-        await JS.InvokeVoidAsync("downloadFile", $"translations-{DateTime.UtcNow:yyyyMMddHHmmss}.json", "application/json", bytes);
+        if (_selectedKey == null) return;
+        await Admin.UpsertValueAsync(_selectedKey, row.Culture, row.TenantId, row.Value ?? "");
+        Snackbar.Add("Saved", Severity.Success);
     }
 
     private async Task ExportCsv()
     {
-        var tenant = string.IsNullOrWhiteSpace(_tenantId) ? null : _tenantId;
-        var bytes = await Admin.ExportCsvAsync(tenant, _culture, _search);
-        await JS.InvokeVoidAsync("downloadFile", $"translations-{DateTime.UtcNow:yyyyMMddHHmmss}.csv", "text/csv", bytes);
+        var bytes = await Admin.ExportCsvAsync(_search);
+        await Download("localization.csv", "text/csv", bytes);
     }
 
-    private async Task OpenImport()
+    private async Task ExportJson()
     {
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Large, FullWidth = true };
-        var dialog = DialogService.Show<Geaux.Localization.SampleBlazor.Components.Dialogs.ImportTranslationsDialog>("Import Translations", options);
-        var result = await dialog.Result;
-        if (!result.Canceled)
-        {
-            await Load();
-        }
+        var bytes = await Admin.ExportJsonAsync(_search);
+        await Download("localization.json", "application/json", bytes);
+    }
+
+    private async Task ReloadAfterImport()
+    {
+        await LoadKeys();
+        if (_selectedKey != null)
+            await SelectKey(_selectedKey);
+    }
+
+    private static async Task Download(string name, string type, byte[] bytes)
+    {
+        // Implement JS download helper if desired
+        await Task.CompletedTask;
+    }
+
+    private sealed class Row
+    {
+        public string Culture { get; set; } = "en-US";
+        public string? TenantId { get; set; }
+        public string? Value { get; set; }
     }
 }

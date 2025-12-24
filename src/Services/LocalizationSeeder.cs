@@ -49,13 +49,13 @@ public sealed class LocalizationSeeder
 
         HashSet<string> keys = new HashSet<string>(StringComparer.Ordinal);
 
-        foreach (var assembly in _assemblies)
+        foreach (Assembly assembly in _assemblies)
         {
-            foreach (var type in assembly.GetTypes())
+            foreach (Type type in assembly.GetTypes())
             {
-                foreach (var prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+                foreach (PropertyInfo prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
                 {
-                    var attr = prop.GetCustomAttribute<LocalizedAttribute>();
+                    LocalizedAttribute? attr = prop.GetCustomAttribute<LocalizedAttribute>();
                     if (attr == null) continue;
 
                     if (!string.IsNullOrWhiteSpace(attr.Key)) keys.Add(attr.Key);
@@ -67,7 +67,7 @@ public sealed class LocalizationSeeder
         }
 
         // Ensure keys exist
-        var existingKeys = await _db.LocalizationKeys
+        List<string> existingKeys = await _db.LocalizationKeys
             .AsNoTracking()
             .Where(k => keys.Contains(k.Key))
             .Select(k => k.Key)
@@ -83,7 +83,7 @@ public sealed class LocalizationSeeder
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         // Map key -> id
-        var keyIdMap = await _db.LocalizationKeys
+        Dictionary<string, int> keyIdMap = await _db.LocalizationKeys
             .AsNoTracking()
             .Where(k => keys.Contains(k.Key))
             .ToDictionaryAsync(k => k.Key, k => k.Id, cancellationToken)
@@ -93,7 +93,7 @@ public sealed class LocalizationSeeder
         {
             var keyId = keyIdMap[key];
 
-            var existing = await _db.LocalizationValues
+            LocalizationValue? existing = await _db.LocalizationValues
                 .FirstOrDefaultAsync(v =>
                     v.LocalizationKeyId == keyId &&
                     v.Culture == culture &&
@@ -107,11 +107,10 @@ public sealed class LocalizationSeeder
                     LocalizationKeyId = keyId,
                     TenantId = tenantId,
                     Culture = culture,
-                    Value = key,
-                    IsSystem = true
+                    Value = key
                 });
             }
-            else if (overwriteSystemValues && existing.IsSystem && !string.Equals(existing.Value, key, StringComparison.Ordinal))
+            else if (overwriteSystemValues && !string.Equals(existing.Value, key, StringComparison.Ordinal))
             {
                 existing.Value = key;
             }

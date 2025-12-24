@@ -12,24 +12,30 @@
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 
 		<PackageId>Geaux.Localization</PackageId>
-		<RepositoryUrl>https://github.com/GeauxCajunIT/Geaux.Localization</RepositoryUrl>
-		<RepositoryType>git</RepositoryType>
-		<PackageProjectUrl>https://github.com/GeauxCajunIT/Geaux.Localization</PackageProjectUrl>
-		<PackageTags>
-			localization;iStringLocalizer;efcore;multitenant;database;geaux
-		</PackageTags>
-
-		<PackageIcon>icon.png</PackageIcon>
-		<IncludeSymbols>true</IncludeSymbols>
-		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<Title>Geaux.Localization</Title>
 		<Version>1.4.0</Version>
 		<Authors>Geaux</Authors>
 		<Description>Database-backed localization (IStringLocalizer) with seeding and model property localization.</Description>
-		<RepositoryUrl></RepositoryUrl>
+
+		<RepositoryUrl>https://github.com/GeauxCajunIT/Geaux.Localization</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageProjectUrl>https://github.com/GeauxCajunIT/Geaux.Localization</PackageProjectUrl>
+		<PackageTags>localization;iStringLocalizer;efcore;multitenant;database;geaux</PackageTags>
+
+		<PackageIcon>icon.png</PackageIcon>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
+
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+		<PackageReleaseNotes>
+			- Normalized storage: LocalizationKeys + LocalizationValues
+			- Tenant/global precedence and culture fallback improvements
+			- Updated tests and sample
+		</PackageReleaseNotes>
 	</PropertyGroup>
-	
+
 	<ItemGroup>
 		<None Include="..\assets\icon.png" Pack="true" PackagePath="\" />
 	</ItemGroup>
@@ -40,7 +46,6 @@
 	    <PackagePath>\</PackagePath>
 	  </None>
 	</ItemGroup>
-
 	<ItemGroup>
 		<!-- EF Core -->
 		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.11" />
