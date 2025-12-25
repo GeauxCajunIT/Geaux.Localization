@@ -1,11 +1,8 @@
-window.downloadFile = (fileName, contentType, bytes) => {
-  const blob = new Blob([new Uint8Array(bytes)], { type: contentType });
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  window.URL.revokeObjectURL(url);
+window.geauxDownload = (fileName, contentType, base64Data) => {
+    const link = document.createElement("a");
+    link.download = fileName;
+    link.href = `data:${contentType};base64,${base64Data}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
 };

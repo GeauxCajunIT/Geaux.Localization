@@ -1,7 +1,6 @@
 using Geaux.Localization.Contexts;
 using Geaux.Localization.Extensions;
 using Geaux.Localization.SampleBlazor.Components;
-using Geaux.Localization.SampleBlazor.Models;
 using Geaux.Localization.SampleBlazor.Services;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
@@ -15,51 +14,52 @@ builder.Services.AddMudServices();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+// Geaux.Localization (from appsettings.json -> "Localization")
 builder.Services.AddGeauxLocalization(builder.Configuration.GetSection("Localization"));
 
+// Admin CRUD service
 builder.Services.AddScoped<TranslationAdminService>();
+builder.Services.AddScoped<DownloadService>();
 
-// IMPORTANT: Do NOT hard-set thread culture globally here if you’re relying on RequestLocalization.
-// Remove these if you have them:
-// CultureInfo.DefaultThreadCurrentCulture = ...
-// CultureInfo.DefaultThreadCurrentUICulture = ...
+// Enable IStringLocalizer<T> injections using the registered factory
+builder.Services.AddTransient(typeof(Microsoft.Extensions.Localization.IStringLocalizer<>), typeof(TypedStringLocalizer<>));
 
 WebApplication app = builder.Build();
 
 app.UseStaticFiles();
-
 app.UseAntiforgery();
 
-// Configure supported cultures
-CultureInfo[] supportedCultures = new[]
+// Supported cultures
+CultureInfo[] supportedCultures =
 {
-    new CultureInfo("en-US"),
-    new CultureInfo("fr-FR")
+    new("en-US"),
+    new("fr-FR"),
 };
 
-RequestLocalizationOptions localizationOptions = new RequestLocalizationOptions
+RequestLocalizationOptions localizationOptions = new()
 {
     DefaultRequestCulture = new RequestCulture("en-US"),
     SupportedCultures = supportedCultures,
     SupportedUICultures = supportedCultures,
 
-    // Cookie FIRST so it persists and won’t revert.
+    // COOKIE FIRST so it persists and doesn't revert
     RequestCultureProviders = new List<IRequestCultureProvider>
     {
         new CookieRequestCultureProvider(),
-        new QueryStringRequestCultureProvider()
+        new QueryStringRequestCultureProvider(),
+        new AcceptLanguageHeaderRequestCultureProvider()
     }
 };
 
 app.UseRequestLocalization(localizationOptions);
 
-// Endpoint to set culture cookie and redirect back
+// Endpoint: set culture cookie and redirect back
 app.MapGet("/culture/set", (HttpContext http, string culture, string? returnUrl) =>
 {
     if (string.IsNullOrWhiteSpace(culture))
         culture = "en-US";
 
-    RequestCulture requestCulture = new RequestCulture(culture);
+    RequestCulture requestCulture = new(culture);
 
     http.Response.Cookies.Append(
         CookieRequestCultureProvider.DefaultCookieName,
@@ -71,54 +71,72 @@ app.MapGet("/culture/set", (HttpContext http, string culture, string? returnUrl)
             Path = "/"
         });
 
-    // Return to same page by default
     if (string.IsNullOrWhiteSpace(returnUrl) || !Uri.IsWellFormedUriString(returnUrl, UriKind.Relative))
         returnUrl = "/";
 
     return Results.LocalRedirect(returnUrl);
 });
 
+// Blazor
 app.MapRazorComponents<App>()
    .AddInteractiveServerRenderMode();
 
+// Initialize database provider behavior:
+// - SQLite: auto-create (EnsureCreated)
+// - SQL Server: migrate automatically (in Dev/Staging/Prod)
 await InitializeLocalizationDbAsync(app);
 
-using (IServiceScope scope = app.Services.CreateScope())
-{
-    IDbContextFactory<GeauxLocalizationDbContext> factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<GeauxLocalizationDbContext>>();
-
-    await LocalizedAttributeSeeder.SeedAsync(
-        factory,
-        modelTypes: new[] { typeof(Product), typeof(Order) },
-        supportedCultures: new[] { "en-US", "fr-FR" },
-        tenantId: null);
-}
+// Optional: seed LocalizedAttribute keys (if you're using that seeder in the sample)
+// await SeedLocalizedAttributesAsync(app, supportedCultures.Select(c => c.Name));
 
 app.Run();
-
 
 static async Task InitializeLocalizationDbAsync(WebApplication app)
 {
     using IServiceScope scope = app.Services.CreateScope();
 
-    IDbContextFactory<GeauxLocalizationDbContext> factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<GeauxLocalizationDbContext>>();
+    IDbContextFactory<GeauxLocalizationDbContext> factory =
+        scope.ServiceProvider.GetRequiredService<IDbContextFactory<GeauxLocalizationDbContext>>();
+
     await using GeauxLocalizationDbContext db = await factory.CreateDbContextAsync();
 
-    string provider = db.Database.ProviderName ?? "";
+    string provider = db.Database.ProviderName ?? string.Empty;
+
     bool isSqlite = provider.Contains("Sqlite", StringComparison.OrdinalIgnoreCase);
     bool isSqlServer = provider.Contains("SqlServer", StringComparison.OrdinalIgnoreCase);
 
     if (isSqlite)
     {
+        // SQLite: always auto-create for sample/dev convenience
         await db.Database.EnsureCreatedAsync();
         return;
     }
 
-    // SQL Server (and others): migrate if migrations exist; otherwise ensure-created
-    IEnumerable<string> migrations = db.Database.GetMigrations();
-    if (migrations.Any())
+    if (isSqlServer)
+    {
+        // SQL Server: migrate automatically (all envs); this is the "real" behavior you want.
+        // If no migrations exist, MigrateAsync won't apply anything but still validates setup.
+        await db.Database.MigrateAsync();
+        return;
+    }
+
+    // Fallback for other providers
+    IEnumerable<string> pending = await db.Database.GetPendingMigrationsAsync();
+    if (pending.Any())
         await db.Database.MigrateAsync();
     else
         await db.Database.EnsureCreatedAsync();
 }
 
+// If you're using LocalizedAttribute seeding, wire this back in
+// static async Task SeedLocalizedAttributesAsync(WebApplication app, IEnumerable<string> cultures)
+// {
+//     using var scope = app.Services.CreateScope();
+//     var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<GeauxLocalizationDbContext>>();
+//     await LocalizedAttributeSeeder.SeedAsync(
+//         factory,
+//         modelTypes: new[] { typeof(Geaux.Localization.SampleBlazor.Models.Product), typeof(Geaux.Localization.SampleBlazor.Models.Order) },
+//         supportedCultures: cultures,
+//         tenantId: null,
+//         ct: default);
+// }

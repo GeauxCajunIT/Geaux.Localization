@@ -2,6 +2,7 @@
 @using Geaux.Localization.SampleBlazor.Services
 @inject TranslationAdminService Admin
 @inject ISnackbar Snackbar
+@inject DownloadService DownloadSvc
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="pa-0">
     <MudGrid Spacing="2">
@@ -36,6 +37,22 @@
                         </MudListItem>
                     }
                 </MudList>
+                <MudSelect T="string"
+                           Dense="true"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Style="min-width: 160px"
+                           Value="@(_tenantFilter ?? GlobalTenant)"
+                           ValueChanged="OnTenantChanged">
+
+                    <MudSelectItem Value="@GlobalTenant">@GlobalTenant</MudSelectItem>
+
+                    @foreach (var t in _knownTenants)
+                    {
+                        <MudSelectItem Value="@t">@t</MudSelectItem>
+                    }
+                </MudSelect>
+
             </MudPaper>
         </MudItem>
 
@@ -105,7 +122,9 @@
     private List<dynamic> _keys = new();
     private string? _selectedKey;
     private bool _showImport;
-
+    private string? _tenantFilter = null; // null = global
+    private List<string> _knownTenants = new() { "TenantA", "TenantB" }; // you can load from config later
+    private const string GlobalTenant = "(global)";
     private readonly string[] _cultures = new[] { "en-US", "fr-FR" };
     private List<Row> _rows = new();
 
@@ -137,13 +156,13 @@
     private async Task ExportCsv()
     {
         var bytes = await Admin.ExportCsvAsync(_search);
-        await Download("localization.csv", "text/csv", bytes);
+        await DownloadSvc.DownloadAsync("localization.csv", "text/csv", bytes);
     }
 
     private async Task ExportJson()
     {
         var bytes = await Admin.ExportJsonAsync(_search);
-        await Download("localization.json", "application/json", bytes);
+        await DownloadSvc.DownloadAsync("localization.json", "application/json", bytes);
     }
 
     private async Task ReloadAfterImport()
@@ -165,4 +184,13 @@
         public string? TenantId { get; set; }
         public string? Value { get; set; }
     }
+
+    private async Task OnTenantChanged(string value)
+    {
+        _tenantFilter = value == GlobalTenant ? null : value;
+
+        if (!string.IsNullOrWhiteSpace(_selectedKey))
+            await SelectKey(_selectedKey);
+    }
+
 }

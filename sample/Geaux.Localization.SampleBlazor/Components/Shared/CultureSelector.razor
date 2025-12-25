@@ -1,0 +1,67 @@
+﻿@using Microsoft.AspNetCore.Localization
+@inject NavigationManager Nav
+@inject IConfiguration Config
+
+<MudSelect T="string"
+           Dense="@Dense"
+           Variant="@Variant"
+           Margin="Margin.Dense"
+           Style="min-width:160px"
+           Value="@_culture"
+           ValueChanged="OnCultureChanged">
+
+    @foreach (var c in _cultures)
+    {
+        <MudSelectItem Value="@c">
+            @GetDisplayName(c)
+        </MudSelectItem>
+    }
+
+</MudSelect>
+
+@code {
+    [Parameter] public bool Dense { get; set; } = true;
+    [Parameter] public Variant Variant { get; set; } = Variant.Outlined;
+
+    private string _culture = "en-US";
+    private List<string> _cultures = new();
+
+    protected override void OnInitialized()
+    {
+        _cultures =
+            Config.GetSection("LocalizationAdmin:Cultures").Get<List<string>>()
+            ?? new() { "en-US" };
+
+        _culture = CultureInfo.CurrentUICulture.Name;
+    }
+
+    private void OnCultureChanged(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return;
+
+        _culture = value;
+
+        var relative = Nav.ToBaseRelativePath(Nav.Uri);
+        if (!relative.StartsWith("/"))
+            relative = "/" + relative;
+
+        var target =
+            $"/culture/set?culture={Uri.EscapeDataString(value)}&returnUrl={Uri.EscapeDataString(relative)}";
+
+        Nav.NavigateTo(target, forceLoad: true);
+    }
+
+    private static string GetDisplayName(string culture)
+    {
+        try
+        {
+            var ci = new CultureInfo(culture);
+            return $"{ci.NativeName} ({ci.Name})";
+        }
+        catch
+        {
+            return culture;
+        }
+    }
+}
