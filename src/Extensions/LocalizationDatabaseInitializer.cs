@@ -16,6 +16,7 @@ public static class LocalizationDatabaseInitializer
     /// - SQL Server (and others) → Migrate
     /// </para>
     /// </summary>
+    /// <param name="services">The application service provider used to resolve dependencies.</param>
     public static async Task InitializeGeauxLocalizationDatabaseAsync(this IServiceProvider services)
     {
         using IServiceScope scope = services.CreateScope();

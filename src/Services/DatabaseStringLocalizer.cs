@@ -7,6 +7,9 @@ using LocalizationOptions = Geaux.Localization.Config.LocalizationOptions;
 
 namespace Geaux.Localization.Services;
 
+/// <summary>
+/// Provides database-backed string localization with tenant and culture precedence handling.
+/// </summary>
 public sealed class DatabaseStringLocalizer : IStringLocalizer
 {
     private readonly IDbContextFactory<GeauxLocalizationDbContext> _dbFactory;
@@ -15,6 +18,14 @@ public sealed class DatabaseStringLocalizer : IStringLocalizer
     private readonly string? _tenantId;
     private readonly CultureInfo _culture;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DatabaseStringLocalizer"/> class.
+    /// </summary>
+    /// <param name="dbFactory">Factory used to create the localization DbContext.</param>
+    /// <param name="options">Localization options that determine culture fallback and tenant scoping.</param>
+    /// <param name="resourceName">Resource name used for logging and context.</param>
+    /// <param name="tenantId">Optional tenant identifier; null indicates global translations.</param>
+    /// <param name="culture">Optional culture override; defaults to <see cref="CultureInfo.CurrentUICulture"/>.</param>
     public DatabaseStringLocalizer(
         IDbContextFactory<GeauxLocalizationDbContext> dbFactory,
         IOptions<LocalizationOptions> options,
@@ -29,12 +40,26 @@ public sealed class DatabaseStringLocalizer : IStringLocalizer
         _culture = culture ?? CultureInfo.CurrentUICulture;
     }
 
+    /// <summary>
+    /// Gets the localized string for the specified key.
+    /// </summary>
+    /// <param name="name">The localization key to resolve.</param>
     public LocalizedString this[string name]
         => GetString(name);
 
+    /// <summary>
+    /// Gets the localized string for the specified key, formatting it with the provided arguments.
+    /// </summary>
+    /// <param name="name">The localization key to resolve.</param>
+    /// <param name="arguments">Arguments used to format the localized value.</param>
     public LocalizedString this[string name, params object[] arguments]
         => GetString(name, arguments);
 
+    /// <summary>
+    /// Retrieves all localized strings, respecting the configured culture and tenant precedence.
+    /// </summary>
+    /// <param name="includeParentCultures">True to include parent cultures when evaluating fallbacks.</param>
+    /// <returns>An enumeration of localized strings.</returns>
     public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures)
     {
         using GeauxLocalizationDbContext db = _dbFactory.CreateDbContext();
@@ -70,6 +95,12 @@ public sealed class DatabaseStringLocalizer : IStringLocalizer
     }
 
 
+    /// <summary>
+    /// Resolves a localized string for the specified key.
+    /// </summary>
+    /// <param name="name">The localization key to resolve.</param>
+    /// <param name="arguments">Optional formatting arguments.</param>
+    /// <returns>A localized string representing the resolved value or the key when not found.</returns>
     private LocalizedString GetString(string name, params object[]? arguments)
     {
         using GeauxLocalizationDbContext db = _dbFactory.CreateDbContext();
@@ -122,6 +153,12 @@ public sealed class DatabaseStringLocalizer : IStringLocalizer
         return new LocalizedString(name, name, true);
     }
 
+    /// <summary>
+    /// Builds the culture lookup chain for the requested culture.
+    /// </summary>
+    /// <param name="culture">The starting culture.</param>
+    /// <param name="includeParents">True to include parent cultures.</param>
+    /// <returns>The ordered set of culture names to evaluate.</returns>
     private static List<string> GetCultureChain(CultureInfo culture, bool includeParents)
     {
         List<string> result = new List<string> { culture.Name };
@@ -139,6 +176,11 @@ public sealed class DatabaseStringLocalizer : IStringLocalizer
         return result;
     }
 
+    /// <summary>
+    /// Creates a new <see cref="DatabaseStringLocalizer"/> scoped to the provided culture.
+    /// </summary>
+    /// <param name="culture">The culture to apply.</param>
+    /// <returns>A localizer configured for the given culture.</returns>
     public DatabaseStringLocalizer WithCulture(CultureInfo culture)
         => new(_dbFactory,
                Microsoft.Extensions.Options.Options.Create(_options),
@@ -146,6 +188,11 @@ public sealed class DatabaseStringLocalizer : IStringLocalizer
                _tenantId,
                culture);
 
+    /// <summary>
+    /// Creates a new <see cref="DatabaseStringLocalizer"/> scoped to the provided tenant.
+    /// </summary>
+    /// <param name="tenantId">The tenant identifier; null for global scope.</param>
+    /// <returns>A localizer configured for the given tenant.</returns>
     public DatabaseStringLocalizer WithTenant(string? tenantId)
         => new(_dbFactory,
                Microsoft.Extensions.Options.Options.Create(_options),

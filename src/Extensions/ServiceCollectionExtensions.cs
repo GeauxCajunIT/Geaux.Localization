@@ -36,6 +36,10 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// Adds Geaux.Localization using an options configurator delegate and configuration for connection-string lookup.
     /// </summary>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="configureOptions">Delegate used to populate <see cref="LocalizationOptions"/>.</param>
+    /// <param name="configuration">Configuration root used to resolve connection strings.</param>
+    /// <returns>The same service collection for chaining.</returns>
     public static IServiceCollection AddGeauxLocalization(
         this IServiceCollection services,
         Action<LocalizationOptions> configureOptions,
@@ -57,6 +61,9 @@ public static class ServiceCollectionExtensions
     /// <remarks>
     /// This overload requires <see cref="LocalizationOptions.ConnectionString"/> to be set by <paramref name="configureOptions"/>.
     /// </remarks>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="configureOptions">Delegate used to populate <see cref="LocalizationOptions"/>.</param>
+    /// <returns>The same service collection for chaining.</returns>
     public static IServiceCollection AddGeauxLocalization(
         this IServiceCollection services,
         Action<LocalizationOptions> configureOptions)
