@@ -20,13 +20,21 @@ public sealed class GeauxLocalizationDbContext : DbContext
     {
     }
 
+    /// <summary>
+    /// Gets the collection of localization keys stored in the database.
+    /// </summary>
     public DbSet<LocalizationKey> LocalizationKeys => Set<LocalizationKey>();
+
+    /// <summary>
+    /// Gets the collection of localization values associated with keys, cultures, and tenants.
+    /// </summary>
     public DbSet<LocalizationValue> LocalizationValues => Set<LocalizationValue>();
 
     /// <summary>
-    /// Gets the collection of translations.
+    /// Gets the collection of legacy translations for backward compatibility.
     /// </summary>
-    /// [Obsolete("Use LocalizationKeys / LocalizationValues")]
+    /// <remarks>This set is deprecated in favor of <see cref="LocalizationKeys"/> and <see cref="LocalizationValues"/>.</remarks>
+    [Obsolete("Use LocalizationKeys / LocalizationValues instead.")]
     public DbSet<Translation> Translations => Set<Translation>();
 
     /// <inheritdoc />
