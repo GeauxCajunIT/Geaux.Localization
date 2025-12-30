@@ -27,6 +27,7 @@ public sealed class GeauxLocalizationDbContext : DbContext
     /// Gets the collection of translations.
     /// </summary>
     /// [Obsolete("Use LocalizationKeys / LocalizationValues")]
+    [Obsolete]
     public DbSet<Translation> Translations => Set<Translation>();
 
     /// <inheritdoc />

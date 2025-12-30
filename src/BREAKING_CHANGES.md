@@ -5,7 +5,7 @@ self-containment, and multi-tenant safety.
 
 ## ❗ Removed
 - `Microsoft.AspNetCore.App` framework reference
-- Duplicate `Options/LocalizationOptions.cs`
+- Duplicate `Options/GeauxLocalizationOptions.cs`
 
 ## ❗ Database Schema Change
 - `Translation` now includes:

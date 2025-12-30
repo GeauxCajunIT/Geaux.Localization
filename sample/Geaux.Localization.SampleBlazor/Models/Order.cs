@@ -7,13 +7,19 @@ namespace Geaux.Localization.SampleBlazor.Models;
 /// </summary>
 public sealed class Order
 {
-    [Localized("Order.Number", DisplayNameKey = "Order.Number.Display")]
+    [Localized("Order.Number",
+        DisplayNameKey = "Order.Number.Display",
+        DisplayMessageKey = "Order.Number.Message",
+        ErrorMessageKey = "Order.Number.Error")]
     public string Number { get; set; } = string.Empty;
 
     [Localized("Order.Customer", DisplayNameKey = "Order.Customer.Display")]
     public string CustomerName { get; set; } = string.Empty;
 
-    [Localized("Order.Total", DisplayNameKey = "Order.Total.Display")]
+    [Localized("Order.Total",
+        DisplayNameKey = "Order.Total.Display",
+        DisplayMessageKey = "Orders.Total.Message",
+        ErrorMessageKey = "Orders.Total.Error")]
     public decimal Total { get; set; }
 
     [Localized("Order.Status",

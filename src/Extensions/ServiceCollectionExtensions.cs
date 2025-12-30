@@ -1,179 +1,128 @@
+using Geaux.Localization.Config;
 using Geaux.Localization.Contexts;
 using Geaux.Localization.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
-using System.Reflection;
-using LocalizationOptions = Geaux.Localization.Config.LocalizationOptions;
+using Microsoft.Extensions.Options;
 
 namespace Geaux.Localization.Extensions;
 
-/// <summary>
-/// Dependency injection helpers for registering Geaux.Localization.
-/// </summary>
 public static class ServiceCollectionExtensions
 {
-    /// <summary>
-    /// Adds Geaux.Localization using configuration binding.
-    /// </summary>
-    /// <param name="services">Service collection.</param>
-    /// <param name="configurationSection">Configuration section containing localization settings (e.g. <c>Localization</c>).</param>
-    /// <returns>The same service collection for chaining.</returns>
-    public static IServiceCollection AddGeauxLocalization(this IServiceCollection services, IConfiguration configurationSection)
-    {
-        if (services == null) throw new ArgumentNullException(nameof(services));
-        if (configurationSection == null) throw new ArgumentNullException(nameof(configurationSection));
-
-        LocalizationOptions options = new LocalizationOptions();
-        configurationSection.Bind(options);
-
-        // Connection strings are typically stored on the configuration root.
-        IConfiguration? root = TryGetConfigurationRoot(configurationSection);
-        return services.AddGeauxLocalization(options, root ?? configurationSection);
-    }
-
-    /// <summary>
-    /// Adds Geaux.Localization using an options configurator delegate and configuration for connection-string lookup.
-    /// </summary>
     public static IServiceCollection AddGeauxLocalization(
         this IServiceCollection services,
-        Action<LocalizationOptions> configureOptions,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        Action<GeauxLocalizationOptions>? configure = null)
     {
-        if (services == null) throw new ArgumentNullException(nameof(services));
-        if (configureOptions == null) throw new ArgumentNullException(nameof(configureOptions));
-        if (configuration == null) throw new ArgumentNullException(nameof(configuration));
+        GeauxLocalizationOptions opts = new GeauxLocalizationOptions();
+        configure?.Invoke(opts);
 
-        LocalizationOptions options = new LocalizationOptions();
-        configureOptions(options);
+        services.AddSingleton<IOptions<GeauxLocalizationOptions>>(_ => Options.Create(opts));
 
-        return services.AddGeauxLocalization(options, configuration);
-    }
+        // Resolve connection string once
+        string conn = ResolveConnectionString(configuration, opts);
 
-    /// <summary>
-    /// Adds Geaux.Localization using an options configurator delegate without configuration-based connection-string lookup.
-    /// </summary>
-    /// <remarks>
-    /// This overload requires <see cref="LocalizationOptions.ConnectionString"/> to be set by <paramref name="configureOptions"/>.
-    /// </remarks>
-    public static IServiceCollection AddGeauxLocalization(
-        this IServiceCollection services,
-        Action<LocalizationOptions> configureOptions)
-    {
-        if (services == null) throw new ArgumentNullException(nameof(services));
-        if (configureOptions == null) throw new ArgumentNullException(nameof(configureOptions));
-
-        LocalizationOptions options = new LocalizationOptions();
-        configureOptions(options);
-
-        return services.AddGeauxLocalization(options, configuration: null);
-    }
-
-    /// <summary>
-    /// Adds Geaux.Localization using explicit options.
-    /// </summary>
-    /// <param name="services">Service collection.</param>
-    /// <param name="options">Localization options.</param>
-    /// <param name="configuration">Optional configuration used for connection-string lookup.</param>
-    /// <returns>The same service collection for chaining.</returns>
-    public static IServiceCollection AddGeauxLocalization(this IServiceCollection services, LocalizationOptions options, IConfiguration? configuration = null)
-    {
-        if (services == null) throw new ArgumentNullException(nameof(services));
-        if (options == null) throw new ArgumentNullException(nameof(options));
-
-        services.AddSingleton(Microsoft.Extensions.Options.Options.Create(options));
-
-        // Resolve connection string
-        string? resolvedConn = null;
-        if (!string.IsNullOrWhiteSpace(options.ConnectionString))
+        // Register DbContext (factory or scoped)
+        if (opts.UseDbContextFactory)
         {
-            resolvedConn = options.ConnectionString;
+            services.AddDbContextFactory<GeauxLocalizationDbContext>(db =>
+                ConfigureProvider(db, opts, conn));
         }
         else
         {
-            var name = options.ConnectionStringName ?? "LocalizationDb";
-            if (configuration != null)
-            {
-                resolvedConn = configuration.GetConnectionString(name);
-            }
-
-            if (string.IsNullOrWhiteSpace(resolvedConn))
-                throw new InvalidOperationException($"Localization connection string '{name}' was not found.");
+            services.AddDbContext<GeauxLocalizationDbContext>(db =>
+                ConfigureProvider(db, opts, conn));
         }
 
-        // Register DbContextFactory for the localization database
-        services.AddDbContextFactory<GeauxLocalizationDbContext>(builder =>
-        {
-            var provider = (options.Provider ?? "SqlServer").Trim();
-            var providerKey = provider.ToLowerInvariant();
-
-            switch (providerKey)
-            {
-                case "sqlserver":
-                    builder.UseSqlServer(resolvedConn, b =>
-                        b.MigrationsAssembly(typeof(GeauxLocalizationDbContext).Assembly.GetName().Name));
-                    break;
-
-                case "sqlite":
-                    builder.UseSqlite(resolvedConn, b =>
-                        b.MigrationsAssembly(typeof(GeauxLocalizationDbContext).Assembly.GetName().Name));
-                    break;
-
-                case "postgresql":
-                case "postgres":
-                case "npgsql":
-                    builder.UseNpgsql(resolvedConn, b =>
-                        b.MigrationsAssembly(typeof(GeauxLocalizationDbContext).Assembly.GetName().Name));
-                    break;
-
-                case "mysql":
-                case "mariadb":
-                    builder.UseMySql(resolvedConn, ServerVersion.AutoDetect(resolvedConn), b =>
-                        b.MigrationsAssembly(typeof(GeauxLocalizationDbContext).Assembly.GetName().Name));
-                    break;
-
-                default:
-                    throw new InvalidOperationException($"Unknown localization provider '{provider}'.");
-            }
-        });
-
-        // Register IStringLocalizerFactory as singleton (safe because it uses IDbContextFactory)
+        // Localization factory
         services.AddSingleton<IStringLocalizerFactory, DatabaseStringLocalizerFactory>();
 
-        // Interceptor (can be added to other DbContexts)
-        services.AddScoped<LocalizationSaveChangesInterceptor>();
+        // Optional typed localizer adapter
+        services.AddTransient(typeof(IStringLocalizer<>), typeof(StringLocalizer<>));
 
-        // Defaults (optional)
-        services.AddSingleton<DefaultCultureContext>();
-        services.AddSingleton<NullTenantContext>();
+        // Interceptor is optional for consumers to add to THEIR DbContexts
+        services.AddSingleton<LocalizationSaveChangesInterceptor>();
+
+        // One hosted service to rule them all
+        services.AddHostedService<LocalizationStartupHostedService>();
 
         return services;
     }
 
-    private static IConfiguration? TryGetConfigurationRoot(IConfiguration configuration)
+    private static void ConfigureProvider(DbContextOptionsBuilder db, GeauxLocalizationOptions opts, string connectionString)
     {
-        if (configuration is IConfigurationRoot root)
-            return root;
+        string? migrationsAssembly =
+            string.IsNullOrWhiteSpace(opts.MigrationsAssembly)
+                ? typeof(GeauxLocalizationDbContext).Assembly.GetName().Name
+                : opts.MigrationsAssembly;
 
-        Type type = configuration.GetType();
+        string provider = (opts.Provider ?? "SqlServer").Trim().ToLowerInvariant();
 
-        // Property: Root (internal in some versions)
-        PropertyInfo? prop = type.GetProperty("Root", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-        if (prop != null && typeof(IConfigurationRoot).IsAssignableFrom(prop.PropertyType))
+        switch (provider)
         {
-            if (prop.GetValue(configuration) is IConfigurationRoot pr)
-                return pr;
+            case "sqlite":
+                db.UseSqlite(connectionString, b =>
+                {
+                    if (!string.IsNullOrWhiteSpace(migrationsAssembly))
+                        b.MigrationsAssembly(migrationsAssembly);
+                });
+                break;
+
+            case "postgres":
+            case "postgresql":
+            case "npgsql":
+                db.UseNpgsql(connectionString, b =>
+                {
+                    if (!string.IsNullOrWhiteSpace(migrationsAssembly))
+                        b.MigrationsAssembly(typeof(GeauxLocalizationDbContext).Assembly.FullName);
+                });
+                break;
+
+            case "mysql":
+            case "mariadb":
+                db.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), b =>
+                {
+                    if (!string.IsNullOrWhiteSpace(migrationsAssembly))
+                        b.MigrationsAssembly(typeof(GeauxLocalizationDbContext).Assembly.FullName);
+                });
+                break;
+
+            case "sqlserver":
+            default:
+                db.UseSqlServer(connectionString, b =>
+                {
+                    if (!string.IsNullOrWhiteSpace(migrationsAssembly))
+                        b.MigrationsAssembly(typeof(GeauxLocalizationDbContext).Assembly.FullName);
+
+                    if (opts.EnableRetryOnFailure)
+                        b.EnableRetryOnFailure();
+                });
+                break;
         }
 
-        // Field: _root (private in some versions)
-        FieldInfo? field = type.GetField("_root", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-        if (field != null && typeof(IConfigurationRoot).IsAssignableFrom(field.FieldType))
+        if (opts.ThrowOnPendingModelChanges)
         {
-            if (field.GetValue(configuration) is IConfigurationRoot fr)
-                return fr;
+            db.ConfigureWarnings(w => w.Throw(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
         }
+    }
 
-        return null;
+    private static string ResolveConnectionString(IConfiguration configuration, GeauxLocalizationOptions options)
+    {
+        if (!string.IsNullOrWhiteSpace(options.ConnectionString))
+            return options.ConnectionString;
+
+        string name = string.IsNullOrWhiteSpace(options.ConnectionStringName)
+            ? "LocalizationConnection"
+            : options.ConnectionStringName;
+
+        string? fromConfig = configuration.GetConnectionString(name);
+        if (!string.IsNullOrWhiteSpace(fromConfig))
+            return fromConfig;
+
+        throw new InvalidOperationException(
+            $"Geaux.Localization: connection string '{name}' was not found. " +
+            $"Set ConnectionStrings:{name} or set options.ConnectionString.");
     }
 }

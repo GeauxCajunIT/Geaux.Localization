@@ -17,7 +17,21 @@
                               Margin="Margin.Dense"
                               Adornment="Adornment.Start"
                               AdornmentIcon="@Icons.Material.Filled.Search" />
+                <MudSelect T="string"
+                           Dense="true"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Style="min-width: 160px"
+                           Value="@(_tenantFilter ?? GlobalTenant)"
+                           ValueChanged="OnTenantChanged">
 
+               <MudSelectItem Value="@GlobalTenant">@GlobalTenant</MudSelectItem>
+
+                    @foreach (var t in _knownTenants)
+                    {
+                        <MudSelectItem Value="@t">@t</MudSelectItem>
+                    }
+                </MudSelect>
                 <MudButton Variant="Variant.Filled"
                            Size="Size.Small"
                            Color="Color.Primary"
@@ -36,23 +50,7 @@
                             <MudText>@k.Key</MudText>
                         </MudListItem>
                     }
-                </MudList>
-                <MudSelect T="string"
-                           Dense="true"
-                           Variant="Variant.Outlined"
-                           Margin="Margin.Dense"
-                           Style="min-width: 160px"
-                           Value="@(_tenantFilter ?? GlobalTenant)"
-                           ValueChanged="OnTenantChanged">
-
-                    <MudSelectItem Value="@GlobalTenant">@GlobalTenant</MudSelectItem>
-
-                    @foreach (var t in _knownTenants)
-                    {
-                        <MudSelectItem Value="@t">@t</MudSelectItem>
-                    }
-                </MudSelect>
-
+                </MudList>    
             </MudPaper>
         </MudItem>
 

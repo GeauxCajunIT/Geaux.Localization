@@ -5,47 +5,11 @@
 namespace Geaux.Localization.Migrations
 {
     /// <inheritdoc />
-    public partial class SchemaChange : Migration
+    public partial class Initial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "IX_Translations_Culture_Key",
-                table: "Translations");
-
-            migrationBuilder.DropIndex(
-                name: "IX_Translations_TenantId_Culture_Key",
-                table: "Translations");
-
-            migrationBuilder.AlterColumn<string>(
-                name: "TenantId",
-                table: "Translations",
-                type: "nvarchar(max)",
-                nullable: true,
-                oldClrType: typeof(string),
-                oldType: "nvarchar(128)",
-                oldMaxLength: 128,
-                oldNullable: true);
-
-            migrationBuilder.AlterColumn<string>(
-                name: "Key",
-                table: "Translations",
-                type: "nvarchar(max)",
-                nullable: false,
-                oldClrType: typeof(string),
-                oldType: "nvarchar(512)",
-                oldMaxLength: 512);
-
-            migrationBuilder.AlterColumn<string>(
-                name: "Culture",
-                table: "Translations",
-                type: "nvarchar(max)",
-                nullable: false,
-                oldClrType: typeof(string),
-                oldType: "nvarchar(32)",
-                oldMaxLength: 32);
-
             migrationBuilder.CreateTable(
                 name: "LocalizationKeys",
                 columns: table => new
@@ -59,6 +23,22 @@ namespace Geaux.Localization.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_LocalizationKeys", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Translations",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    TenantId = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Culture = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Key = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Value = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Translations", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -102,8 +82,6 @@ namespace Geaux.Localization.Migrations
                 columns: new[] { "TenantId", "LocalizationKeyId", "Culture" },
                 unique: true,
                 filter: "[TenantId] IS NOT NULL");
-
-
         }
 
         /// <inheritdoc />
@@ -113,49 +91,10 @@ namespace Geaux.Localization.Migrations
                 name: "LocalizationValues");
 
             migrationBuilder.DropTable(
+                name: "Translations");
+
+            migrationBuilder.DropTable(
                 name: "LocalizationKeys");
-
-            migrationBuilder.AlterColumn<string>(
-                name: "TenantId",
-                table: "Translations",
-                type: "nvarchar(128)",
-                maxLength: 128,
-                nullable: true,
-                oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
-                oldNullable: true);
-
-            migrationBuilder.AlterColumn<string>(
-                name: "Key",
-                table: "Translations",
-                type: "nvarchar(512)",
-                maxLength: 512,
-                nullable: false,
-                oldClrType: typeof(string),
-                oldType: "nvarchar(max)");
-
-            migrationBuilder.AlterColumn<string>(
-                name: "Culture",
-                table: "Translations",
-                type: "nvarchar(32)",
-                maxLength: 32,
-                nullable: false,
-                oldClrType: typeof(string),
-                oldType: "nvarchar(max)");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Translations_Culture_Key",
-                table: "Translations",
-                columns: new[] { "Culture", "Key" },
-                unique: true,
-                filter: "[TenantId] IS NULL");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Translations_TenantId_Culture_Key",
-                table: "Translations",
-                columns: new[] { "TenantId", "Culture", "Key" },
-                unique: true,
-                filter: "[TenantId] IS NOT NULL");
         }
     }
 }

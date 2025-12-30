@@ -6,6 +6,18 @@
   </Folder>
   <Folder Name="/docs/api/">
     <File Path="docs/api/index.md" />
+    <File Path="docs/api/toc.yml" />
+  </Folder>
+  <Folder Name="/docs/articles/">
+    <File Path="docs/articles/admin-ui.md" />
+    <File Path="docs/articles/changelog.md" />
+    <File Path="docs/articles/configuration.md" />
+    <File Path="docs/articles/efcore.md" />
+    <File Path="docs/articles/getting-started.md" />
+    <File Path="docs/articles/seeding.md" />
+    <File Path="docs/articles/tenancy.md" />
+    <File Path="docs/articles/toc.yml" />
+    <File Path="docs/articles/troubleshooting.md" />
   </Folder>
   <Folder Name="/Sample/">
     <Project Path="sample/Geaux.Localization.SampleBlazor/Geaux.Localization.SampleBlazor.csproj">

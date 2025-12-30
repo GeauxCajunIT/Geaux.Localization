@@ -3,21 +3,21 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 using System.Globalization;
-using LocalizationOptions = Geaux.Localization.Config.LocalizationOptions;
+using GeauxLocalizationOptions = Geaux.Localization.Config.GeauxLocalizationOptions;
 
 namespace Geaux.Localization.Services;
 
 public sealed class DatabaseStringLocalizer : IStringLocalizer
 {
     private readonly IDbContextFactory<GeauxLocalizationDbContext> _dbFactory;
-    private readonly LocalizationOptions _options;
+    private readonly GeauxLocalizationOptions _options;
     private readonly string _resourceName;
     private readonly string? _tenantId;
     private readonly CultureInfo _culture;
 
     public DatabaseStringLocalizer(
         IDbContextFactory<GeauxLocalizationDbContext> dbFactory,
-        IOptions<LocalizationOptions> options,
+        IOptions<GeauxLocalizationOptions> options,
         string resourceName,
         string? tenantId = null,
         CultureInfo? culture = null)

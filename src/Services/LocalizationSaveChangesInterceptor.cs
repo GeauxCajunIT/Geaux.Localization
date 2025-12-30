@@ -21,7 +21,7 @@ namespace Geaux.Localization.Services;
 public sealed class LocalizationSaveChangesInterceptor : SaveChangesInterceptor
 {
     private readonly GeauxLocalizationDbContext _localizationDb;
-    private readonly LocalizationOptions _options;
+    private readonly GeauxLocalizationOptions _options;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="LocalizationSaveChangesInterceptor"/> class.
@@ -29,7 +29,7 @@ public sealed class LocalizationSaveChangesInterceptor : SaveChangesInterceptor
     /// <param name="options">Localization options.</param>
     /// <param name="configuration">Application configuration (used for connection string resolution).</param>
     public LocalizationSaveChangesInterceptor(
-        IOptions<LocalizationOptions> options,
+        IOptions<GeauxLocalizationOptions> options,
         IConfiguration? configuration = null)
     {
         if (options == null) throw new ArgumentNullException(nameof(options));
@@ -69,7 +69,7 @@ public sealed class LocalizationSaveChangesInterceptor : SaveChangesInterceptor
         _localizationDb = new GeauxLocalizationDbContext(builder.Options);
     }
 
-    private static string ResolveConnectionString(LocalizationOptions opts, IConfiguration? configuration)
+    private static string ResolveConnectionString(GeauxLocalizationOptions opts, IConfiguration? configuration)
     {
         if (!string.IsNullOrWhiteSpace(opts.ConnectionString))
             return opts.ConnectionString;
@@ -81,7 +81,7 @@ public sealed class LocalizationSaveChangesInterceptor : SaveChangesInterceptor
                 ?? throw new InvalidOperationException($"Localization connection string '{name}' was not found.");
         }
 
-        throw new InvalidOperationException("Localization connection string is not configured. Provide LocalizationOptions.ConnectionString or a configured connection string named in LocalizationOptions.ConnectionStringName.");
+        throw new InvalidOperationException("Localization connection string is not configured. Provide GeauxLocalizationOptions.ConnectionString or a configured connection string named in GeauxLocalizationOptions.ConnectionStringName.");
     }
 
     /// <inheritdoc />

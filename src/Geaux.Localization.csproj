@@ -6,6 +6,7 @@
 		<Nullable>enable</Nullable>
 
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
 		<NoWarn>$(NoWarn);1591</NoWarn>
 
 		<IsPackable>true</IsPackable>
@@ -13,7 +14,7 @@
 
 		<PackageId>Geaux.Localization</PackageId>
 		<Title>Geaux.Localization</Title>
-		<Version>1.4.0</Version>
+		<Version>1.4.3</Version>
 		<Authors>Geaux</Authors>
 		<Description>Database-backed localization (IStringLocalizer) with seeding and model property localization.</Description>
 
@@ -39,7 +40,13 @@
 	<ItemGroup>
 		<None Include="..\assets\icon.png" Pack="true" PackagePath="\" />
 	</ItemGroup>
-	
+
+	<ItemGroup>
+	  <None Remove="bin\Release\net9.0\Geaux.Localization.xml" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml" Pack="true" PackagePath="lib\$(TargetFramework)\" />
+	</ItemGroup>
 	<ItemGroup>
 	  <None Include="..\README.md">
 	    <Pack>True</Pack>
@@ -62,6 +69,7 @@
 		  <PrivateAssets>all</PrivateAssets>
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.11" />
 		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
 		<PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
 
@@ -75,6 +83,9 @@
 			<PackageReference Include="Microsoft.Extensions.Options" Version="9.0.11" />
 			<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.11" />
 
+	</ItemGroup>
+	<ItemGroup>
+	  <Folder Include="Migrations\" />
 	</ItemGroup>
 
 </Project>

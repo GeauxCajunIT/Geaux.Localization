@@ -40,7 +40,7 @@ public class DatabaseStringLocalizerBehaviorTests
         string culture,
         string? tenantId = null)
     {
-        var options = Options.Create(new LocalizationOptions
+        var options = Options.Create(new GeauxLocalizationOptions
         {
             DefaultCulture = "en-US",
             EnableCultureFallback = true,

@@ -4,6 +4,7 @@ using Geaux.Localization.Contexts;
 using Geaux.Localization.Services;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using System.Reflection;
 
 namespace Geaux.Localization.Tests;
@@ -20,25 +21,48 @@ public class LocalizationSeederBehaviorTests
     public async Task SeedAsync_creates_missing_keys_and_is_idempotent()
     {
         using SqliteConnection conn = new SqliteConnection("Filename=:memory:");
-        conn.Open();
+        await conn.OpenAsync();
 
-        var options = new DbContextOptionsBuilder<Geaux.Localization.Contexts.GeauxLocalizationDbContext>()
+        DbContextOptions<GeauxLocalizationDbContext> options = new DbContextOptionsBuilder<GeauxLocalizationDbContext>()
             .UseSqlite(conn)
             .Options;
 
-        await using GeauxLocalizationDbContext db = new Geaux.Localization.Contexts.GeauxLocalizationDbContext(options);
-        await db.Database.EnsureCreatedAsync();
+        // Create schema once
+        await using (var db = new GeauxLocalizationDbContext(options))
+        {
+            await db.Database.EnsureCreatedAsync();
+        }
 
-        LocalizationSeeder seeder = new LocalizationSeeder(db, new[] { Assembly.GetExecutingAssembly() });
+        // Factory for the seeder (prevents disposed context issues)
+        var factory = new PooledDbContextFactory<GeauxLocalizationDbContext>(options);
 
-        await seeder.SeedAsync("en-US", tenantId: "T1");
+        // New seeder ctor only takes assemblies
+        LocalizationSeeder seeder = new LocalizationSeeder(new[] { Assembly.GetExecutingAssembly() });
 
-        var count1 = await db.LocalizationValues.CountAsync();
-        count1.Should().BeGreaterThanOrEqualTo(3);
+        // Seed first time (scan assemblies)
+        await seeder.SeedAsync(
+            factory: factory,
+            modelTypes: Array.Empty<Type>(),              // empty => scan assemblies passed to ctor
+            supportedCultures: new[] { "en-US" },
+            tenantId: "T1",
+            overwriteExisting: false);
 
-        await seeder.SeedAsync("en-US", tenantId: "T1");
-        var count2 = await db.LocalizationValues.CountAsync();
+        // Verify values created
+        await using (var db = new GeauxLocalizationDbContext(options))
+        {
+            var count1 = await db.LocalizationValues.CountAsync();
+            count1.Should().BeGreaterThanOrEqualTo(3);
 
-        count2.Should().Be(count1);
+            // Seed again => idempotent
+            await seeder.SeedAsync(
+                factory: factory,
+                modelTypes: Array.Empty<Type>(),
+                supportedCultures: new[] { "en-US" },
+                tenantId: "T1",
+                overwriteExisting: false);
+
+            var count2 = await db.LocalizationValues.CountAsync();
+            count2.Should().Be(count1);
+        }
     }
 }

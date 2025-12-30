@@ -1,6 +1,4 @@
-
-using FluentAssertions;
-using Geaux.Localization.Config;
+﻿using Geaux.Localization.Config;
 using Geaux.Localization.Extensions;
 using Geaux.Localization.Services;
 using Microsoft.Extensions.Configuration;
@@ -12,51 +10,59 @@ namespace Geaux.Localization.Tests
     public class LocalizationSaveChangesInterceptorTests
     {
         [Fact]
-        public void Interceptor_IsRegisteredAndCanBeResolved()
+        public void Interceptor_IsRegisteredAndResolvable()
         {
-            KeyValuePair<string, string?>[] inMemory = new[]
-            {
-                new KeyValuePair<string, string?>("ConnectionStrings:LocalizationDb", "DataSource=:memory:"),
-                new KeyValuePair<string, string?>("Localization:ConnectionStringName", "LocalizationDb"),
-                new KeyValuePair<string, string?>("Localization:Provider", "sqlite")
-            };
+            IConfigurationRoot config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>()).Build();
 
-            IConfigurationRoot config = new ConfigurationBuilder().AddInMemoryCollection(inMemory).Build();
-            var services = new ServiceCollection();
+            ServiceCollection services = new ServiceCollection();
             services.AddSingleton<IConfiguration>(config);
 
-            services.AddGeauxLocalization(config.GetSection("Localization"));
+            services.AddGeauxLocalization(config, opts =>
+            {
+                opts.Provider = "Sqlite";
+                opts.ConnectionString = "Data Source=:memory:"; // ✅ avoid config lookup
+                opts.UseDbContextFactory = true;
+            });
 
-            ServiceProvider sp = services.BuildServiceProvider();
+            using ServiceProvider sp = services.BuildServiceProvider();
 
-            LocalizationSaveChangesInterceptor? interceptor = sp.GetService<LocalizationSaveChangesInterceptor>();
-            interceptor.Should().NotBeNull();
+            // NOTE: resolve inside scope since interceptor is usually scoped
+            using IServiceScope scope = sp.CreateScope();
+            LocalizationSaveChangesInterceptor interceptor = scope.ServiceProvider.GetRequiredService<LocalizationSaveChangesInterceptor>();
+
+            Assert.NotNull(interceptor);
         }
 
         [Fact]
         public void Options_AreConfiguredAndAvailableViaIOptions()
         {
-            KeyValuePair<string, string?>[] inMemory = new[]
-            {
-                new KeyValuePair<string, string?>("ConnectionStrings:LocalizationDb", "DataSource=:memory:"),
-                new KeyValuePair<string, string?>("Localization:ConnectionStringName", "LocalizationDb"),
-                new KeyValuePair<string, string?>("Localization:Provider", "sqlite"),
-                new KeyValuePair<string, string?>("Localization:MigrationsAssembly", "Geaux.Migrations")
-            };
+            IConfigurationRoot config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>())
+                .Build();
 
-            IConfigurationRoot config = new ConfigurationBuilder().AddInMemoryCollection(inMemory).Build();
-            var services = new ServiceCollection();
+            ServiceCollection services = new ServiceCollection();
             services.AddSingleton<IConfiguration>(config);
 
-            services.AddGeauxLocalization(config.GetSection("Localization"));
+            services.AddGeauxLocalization(config, opts =>
+            {
+                opts.Provider = "Sqlite";
+                opts.ConnectionString = "Data Source=:memory:"; // ✅ required
+                opts.ConnectionStringName = "LocalizationConnection";
+                opts.MigrationsAssembly = "Geaux.Localization";
+                opts.AutoMigrate = true;
+                opts.UseDbContextFactory = true;
+            });
 
-            ServiceProvider sp = services.BuildServiceProvider();
-            LocalizationOptions opts = sp.GetRequiredService<IOptions<LocalizationOptions>>().Value;
+            using ServiceProvider sp = services.BuildServiceProvider();
+            GeauxLocalizationOptions resolved = sp.GetRequiredService<IOptions<GeauxLocalizationOptions>>().Value;
 
-            opts.ConnectionStringName.Should().Be("LocalizationDb");
-            opts.Provider.Should().Be("sqlite");
-            opts.MigrationsAssembly.Should().Be("Geaux.Migrations");
+            Assert.Equal("LocalizationConnection", resolved.ConnectionStringName);
+            Assert.Equal("Geaux.Localization", resolved.MigrationsAssembly);
+            Assert.True(resolved.AutoMigrate);
+            Assert.True(resolved.UseDbContextFactory);
+            Assert.Equal("Sqlite", resolved.Provider);
         }
+
     }
 }
 

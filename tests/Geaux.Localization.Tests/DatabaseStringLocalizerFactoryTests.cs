@@ -1,4 +1,4 @@
-
+﻿
 using FluentAssertions;
 using Geaux.Localization.Extensions;
 using Geaux.Localization.Services;
@@ -11,52 +11,51 @@ namespace Geaux.Localization.Tests
     public class DatabaseStringLocalizerFactoryTests
     {
         [Fact]
-        public void AddGeauxLocalization_RegistersDatabaseStringLocalizerFactory_AsIStringLocalizerFactory()
+        public void AddGeauxLocalization_Registers_IStringLocalizerFactory()
         {
-            KeyValuePair<string, string?>[] inMemory = new[]
+            Dictionary<string, string?> inMemory = new Dictionary<string, string?>
             {
-                new KeyValuePair<string, string?>("ConnectionStrings:LocalizationDb", "DataSource=:memory:"),
-                new KeyValuePair<string, string?>("Localization:ConnectionStringName", "LocalizationDb"),
-                new KeyValuePair<string, string?>("Localization:Provider", "sqlite")
+                ["ConnectionStrings:LocalizationConnection"] = "DataSource=:memory:"
             };
 
-            IConfigurationRoot config = new ConfigurationBuilder().AddInMemoryCollection(inMemory).Build();
-            ServiceCollection services = new ServiceCollection();
-            services.AddSingleton<IConfiguration>(config);
+            IConfiguration config = new ConfigurationBuilder()
+                .AddInMemoryCollection(inMemory)
+                .Build();
 
-            services.AddGeauxLocalization(config.GetSection("Localization"));
+            ServiceCollection services = new ServiceCollection();
+
+            services.AddGeauxLocalization(config);
 
             ServiceProvider sp = services.BuildServiceProvider();
 
-            IStringLocalizerFactory? factory = sp.GetService<IStringLocalizerFactory>();
-            factory.Should().NotBeNull();
+            IStringLocalizerFactory factory = sp.GetRequiredService<IStringLocalizerFactory>();
             factory.Should().BeOfType<DatabaseStringLocalizerFactory>();
         }
+
 
         [Fact]
         public void DatabaseStringLocalizerFactory_CanCreateLocalizer_ForType()
         {
-            KeyValuePair<string, string?>[] inMemory = new[]
-            {
-                new KeyValuePair<string, string?>("ConnectionStrings:LocalizationDb", "DataSource=:memory:"),
-                new KeyValuePair<string, string?>("Localization:ConnectionStringName", "LocalizationDb"),
-                new KeyValuePair<string, string?>("Localization:Provider", "sqlite")
-            };
+            IConfigurationRoot config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>())
+                .Build();
 
-            IConfigurationRoot config = new ConfigurationBuilder().AddInMemoryCollection(inMemory).Build();
             ServiceCollection services = new ServiceCollection();
             services.AddSingleton<IConfiguration>(config);
-            services.AddGeauxLocalization(config.GetSection("Localization"));
 
-            ServiceProvider sp = services.BuildServiceProvider();
+            services.AddGeauxLocalization(config, opts =>
+            {
+                opts.Provider = "Sqlite";
+                opts.ConnectionString = "Data Source=:memory:"; // ✅ required
+                opts.UseDbContextFactory = true;
+            });
+
+            using ServiceProvider sp = services.BuildServiceProvider();
+
             IStringLocalizerFactory factory = sp.GetRequiredService<IStringLocalizerFactory>();
+            IStringLocalizer localizer = factory.Create(typeof(DatabaseStringLocalizerFactoryTests));
 
-            // Should not throw when creating a localizer for a type
-            IStringLocalizer localizer = factory.Create(typeof(DatabaseStringLocalizerFactory));
-            localizer.Should().NotBeNull();
+            Assert.NotNull(localizer);
         }
     }
 }
-
-
-

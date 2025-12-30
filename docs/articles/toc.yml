@@ -1,0 +1,16 @@
+- name: Getting Started
+  href: getting-started.md
+- name: Configuration
+  href: configuration.md
+- name: EF Core and Migrations
+  href: efcore.md
+- name: Localized Attribute Seeding
+  href: seeding.md
+- name: Tenancy Integration
+  href: tenancy.md
+- name: Admin UI Integration
+  href: admin-ui.md
+- name: Troubleshooting
+  href: troubleshooting.md
+- name: Changelog
+  href: changelog.md

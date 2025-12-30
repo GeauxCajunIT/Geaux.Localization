@@ -4,18 +4,15 @@
       "src": [
         {
           "files": [
-            "Geaux.Localization.csproj"
+            "../src/**/bin/Release/net9.0/*.dll"
           ],
-          "src": "../src"
+          "exclude": [
+            "**/ref/**"
+          ]
         }
       ],
-      "exclude": [
-        "**/bin/**",
-        "**/obj/**",
-        "sample/**",
-        "tests/**"
-      ],
       "dest": "api",
+      "disableGitFeatures": false,
       "properties": {
         "TargetFramework": "net9.0"
       }
@@ -26,13 +23,12 @@
       {
         "files": [
           "index.md",
-          "toc.yml"
-        ]
-      },
-      {
-        "files": [
+          "toc.yml",
+          "articles/**.md",
+          "articles/toc.yml",
           "api/**.yml",
-          "api/index.md"
+          "api/index.md",
+          "api/toc.yml"
         ]
       }
     ],
@@ -43,15 +39,18 @@
         ]
       }
     ],
-    "dest": "_site",
+    "output": "_site",
     "globalMetadata": {
       "_appTitle": "Geaux.Localization",
-      "_enableSearch": true
+      "_appName": "Geaux.Localization",
+      "_enableSearch": true,
+      "pdf": false
     },
     "template": [
       "default",
       "modern"
     ],
+    "markdownEngineName": "markdig",
     "xrefService": [
       "https://xref.docs.microsoft.com/query?uid={uid}"
     ]

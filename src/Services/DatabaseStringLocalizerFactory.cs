@@ -2,7 +2,7 @@ using Geaux.Localization.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
-using LocalizationOptions = Geaux.Localization.Config.LocalizationOptions;
+using GeauxLocalizationOptions = Geaux.Localization.Config.GeauxLocalizationOptions;
 
 namespace Geaux.Localization.Services;
 
@@ -11,12 +11,12 @@ namespace Geaux.Localization.Services;
 /// </summary>
 /// <remarks>
 /// The factory is registered as a singleton and uses an <see cref="IDbContextFactory{TContext}"/> to safely create
-/// DbContext instances for each lookup. Tenant scoping is configured via <see cref="LocalizationOptions.TenantId"/>.
+/// DbContext instances for each lookup. Tenant scoping is configured via <see cref="GeauxLocalizationOptions.TenantId"/>.
 /// </remarks>
 public sealed class DatabaseStringLocalizerFactory : IStringLocalizerFactory
 {
     private readonly IDbContextFactory<GeauxLocalizationDbContext> _dbFactory;
-    private readonly IOptions<LocalizationOptions> _options;
+    private readonly IOptions<GeauxLocalizationOptions> _options;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DatabaseStringLocalizerFactory"/> class.
@@ -25,7 +25,7 @@ public sealed class DatabaseStringLocalizerFactory : IStringLocalizerFactory
     /// <param name="options">Localization options used for tenant scoping.</param>
     public DatabaseStringLocalizerFactory(
         IDbContextFactory<GeauxLocalizationDbContext> dbFactory,
-        IOptions<LocalizationOptions> options)
+        IOptions<GeauxLocalizationOptions> options)
     {
         _dbFactory = dbFactory ?? throw new ArgumentNullException(nameof(dbFactory));
         _options = options ?? throw new ArgumentNullException(nameof(options));

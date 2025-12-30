@@ -9,7 +9,7 @@ and this project adheres to Semantic Versioning.
 ### Added
 - Tenant-aware localization via `TenantId`
 - Unique index on `(TenantId, Culture, Key)`
-- New `AddGeauxLocalization(Action<LocalizationOptions>)` overloads
+- New `AddGeauxLocalization(Action<GeauxLocalizationOptions>)` overloads
 - Comprehensive behavior tests for:
   - Database-backed localizer
   - Culture overrides
@@ -31,5 +31,5 @@ and this project adheres to Semantic Versioning.
 - Invalid attribute named argument definitions
 
 ### Removed
-- Duplicate `LocalizationOptions` type
+- Duplicate `GeauxLocalizationOptions` type
 - Implicit HttpContext dependency

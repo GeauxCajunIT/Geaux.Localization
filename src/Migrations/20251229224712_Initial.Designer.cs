@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Geaux.Localization.Migrations
 {
     [DbContext(typeof(GeauxLocalizationDbContext))]
-    [Migration("20251223182122_Schema Change")]
-    partial class SchemaChange
+    [Migration("20251229224712_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -61,9 +61,6 @@ namespace Geaux.Localization.Migrations
                     b.Property<string>("Culture")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
-
-                    b.Property<bool>("IsSystem")
-                        .HasColumnType("bit");
 
                     b.Property<int>("LocalizationKeyId")
                         .HasColumnType("int");

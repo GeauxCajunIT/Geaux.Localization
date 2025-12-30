@@ -19,7 +19,7 @@ public sealed class DesignTimeLocalizationDbContextFactory : IDesignTimeDbContex
         DbContextOptionsBuilder<GeauxLocalizationDbContext> builder = new DbContextOptionsBuilder<GeauxLocalizationDbContext>();
 
         string conn = Environment.GetEnvironmentVariable("GEAUX_LOCALIZATION_CONNECTION")
-                   ?? @"Server=(localdb)\\MSSQLLocalDB;Database=LocalizationDb;Trusted_Connection=True;TrustServerCertificate=True;";
+                   ?? @"Server=(localdb)\MSSQLLocalDB;Database=LocalizationDb;Trusted_Connection=True;TrustServerCertificate=True;";
 
         builder.UseSqlServer(conn, b =>
             b.MigrationsAssembly(typeof(GeauxLocalizationDbContext).Assembly.GetName().Name));
