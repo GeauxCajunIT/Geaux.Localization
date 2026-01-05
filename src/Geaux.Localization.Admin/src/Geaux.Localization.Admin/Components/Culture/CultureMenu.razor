@@ -1,0 +1,56 @@
+﻿@using Geaux.Localization.Admin.DTOs
+@inject CultureAdminService CultureService
+@inject NavigationManager Nav
+
+<MudMenu Dense="true" OffsetY="true">
+
+    <ActivatorContent>
+        @if (_currentCulture is not null)
+        {
+            <CultureFlag Culture="@_currentCulture" />
+        }
+        else
+        {
+            <MudIcon Icon="@Icons.Material.Filled.Language" />
+        }
+    </ActivatorContent>
+
+    <ChildContent>
+        @foreach (var c in _cultures)
+        {
+            <MudMenuItem OnClick="@(() => ChangeCulture(c.CultureCode))">
+                <CultureFlag Culture="@c" />
+                <span class="ml-2">@c.DisplayName (@c.CultureCode)</span>
+            </MudMenuItem>
+        }
+    </ChildContent>
+
+</MudMenu>
+
+@code {
+    private List<LocalizationCultureDto> _cultures = new();
+    private LocalizationCultureDto? _currentCulture;
+    private string _currentCode = "en-US";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load only active cultures
+        var all = await CultureService.GetAllCulturesAsync();
+        _cultures = all.Where(c => c.IsActive).ToList();
+
+        // Determine current culture from URL
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        _currentCode = query["culture"] ?? "en-US";
+
+        _currentCulture = _cultures.FirstOrDefault(c => c.CultureCode == _currentCode)
+            ?? _cultures.FirstOrDefault();
+
+        StateHasChanged(); // ensures flag icon appears
+    }
+
+    private void ChangeCulture(string culture)
+    {
+        Nav.NavigateTo($"/culture/set?culture={culture}", forceLoad: true);
+    }
+}

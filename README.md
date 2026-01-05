@@ -1,102 +1,252 @@
-# Geaux.Localization
+   # Geaux.Localization
 
-Tenant-aware, culture-aware, database-backed localization for .NET 8+ and .NET 9 applications.
+Database‑backed localization for .NET with multi‑tenant support, EF Core integration, culture fallback, and export/import tooling.
 
-Geaux.Localization provides a complete end-to-end localization system for multi-tenant and multi-culture
-applications. It integrates with Entity Framework Core and ASP.NET Core to deliver database-backed translations that
-respect the current tenant and culture for every request.
+<p align="left">
+<img src="https://img.shields.io/nuget/v/Geaux.Localization?color=4c1&label=NuGet%20Version" />
+<img src="https://img.shields.io/nuget/dt/Geaux.Localization?color=blue&label=Downloads" />
+<img src="https://img.shields.io/github/actions/workflow/status/GeauxCajunIT/Geaux.Localization/build.yml?label=Build" />
+<img src="https://img.shields.io/github/license/GeauxCajunIT/Geaux.Localization?color=yellow" />
+<img src="https://img.shields.io/badge/.NET-9.0-blueviolet" />
+<img src="https://img.shields.io/badge/EF%20Core-9.0-512BD4" />
+</p>
 
-## Features
-- Database-backed `IStringLocalizer` implementation with tenant and culture scoping
-- `[Localized]` attribute for annotating model properties that require translation keys
-- EF Core `SaveChanges` interceptor that automatically upserts translations for annotated properties
-- Seeder utility to create default translations across assemblies
-- DI extension for registering context, localizer, and supporting services from configuration
-- Support for SQL Server, PostgreSQL, MySQL/MariaDB, and Sqlite providers
+Designed for:
 
-## Installation
-Add the package reference to your project:
+- Multi-tenant systems
+- EF Core
+- Clean Architecture
+- NuGet distribution
+- Admin UI via a separate RCL (`Geaux.Localization.Admin`)
+
+---
+
+## ✨ Features
+
+- Database-backed translations (EF Core)
+- Tenant-aware localization (`TenantId`)
+- Culture fallback support
+- Attribute-based model localization via `[Localized]`
+- EF Core `SaveChanges` interceptor for automatic key creation
+- Seeding pipeline:
+  - Model attribute seeding
+  - Key and culture seeding
+  - Repair of missing `(Key × Culture)` combinations
+- Export/import services for language packs (JSON/CSV/ZIP)
+- Fully self-contained core package (no ASP.NET framework reference)
+
+---
+
+## 📦 Installation
 
 ```bash
 dotnet add package Geaux.Localization
 ```
 
-Enable XML documentation so DocFX and IntelliSense can consume the inline XML comments:
+Admin UI (optional):
 
-```xml
-<PropertyGroup>
-  <GenerateDocumentationFile>true</GenerateDocumentationFile>
-</PropertyGroup>
+```bash
+dotnet add package Geaux.Localization.Admin
 ```
 
-## Configuration
-Add a `Localization` section to your `appsettings.json`:
+## ⚙️ Configuration
 
-```json
+appsettings.json:
+``` json
 {
-  "ConnectionStrings": {
-    "LocalizationDb": "Server=localhost;Database=GeauxLocalization;Trusted_Connection=True;"
-  },
   "Localization": {
-    "DefaultCulture": "en-US",
-    "SupportedCultures": [ "en-US", "fr-FR" ],
-    "EnableCultureFallback": true,
-    "ConnectionStringName": "LocalizationDb",
     "Provider": "SqlServer",
-    "MigrationsAssembly": "Geaux.Migrations"
+    "ConnectionStringName": "LocalizationDb",
+    "DefaultCulture": "en-US",
+    "TenantId": "tenant-1"
   }
 }
 ```
 
-## Usage
-Register the localization services in `Program.cs`:
+## 🔧 Service Registration
 
+Configuration-based
 ```csharp
-using Geaux.Localization.Extensions;
-
-var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddGeauxLocalization(builder.Configuration);
+builder.Services.AddGeauxLocalization(
+    builder.Configuration.GetSection("Localization"));
 ```
 
-Annotate model properties that need translations:
+Code-based
 
 ```csharp
+builder.Services.AddGeauxLocalization(options =>
+{
+    options.Provider = "Sqlite";
+    options.ConnectionString = "Data Source=localization.db";
+    options.DefaultCulture = "en-US";
+    options.TenantId = "tenant-1";
+});
+```
+
+## 🗄️ DbContext & Migrations
+GeauxLocalizationDbContext is the core EF Core context.
+
+Design-time connection string:
+
+``` bash
+set GEAUX_LOCALIZATION_CONNECTION=Server=.;Database=LocalizationDb;Trusted_Connection=True;
+```
+
+Apply migrations as usual:
+
+``` bash
+dotnet ef database update --project src/Geaux.Localization
+```
+
+## 🏷️ Attribute-Based Localization
+``` csharp
 using Geaux.Localization.Attributes;
 
 public class Product
 {
-    public string TenantId { get; set; } = "default";
-
     [Localized(
-        key: "Product.Name",
-        errorMessageKey: "Product.Name.Required",
-        displayNameKey: "Product.Name.Label",
-        displayMessageKey: "Product.Name.Description")]
+        "Product.Name",
+        DisplayNameKey = "Product.Name.Display",
+        ErrorMessageKey = "Product.Name.Required")]
     public string Name { get; set; } = string.Empty;
 }
 ```
 
-Translations are stored in the `Translations` table as rows identified by tenant, culture, and key. The
-`LocalizationSaveChangesInterceptor` keeps entries in sync during EF Core save operations.
+At startup, you can scan and seed keys:
 
-### Provider mapping
-| Provider value | EF Core call     | Example                                  |
-|----------------|------------------|------------------------------------------|
-| SqlServer      | `UseSqlServer`   | `"Provider": "SqlServer"`               |
-| PostgreSql     | `UseNpgsql`      | `"Provider": "PostgreSql"`              |
-| MySql/MariaDb  | `UseMySql`       | `"Provider": "MySql"`                   |
-| Sqlite         | `UseSqlite`      | `"Provider": "Sqlite"`                  |
-| LocalDb        | `UseSqlServer`   | `"Provider": "LocalDb"`                 |
-
-## Documentation
-Generate DocFX documentation (requires the `docfx` global tool):
-
-```bash
-dotnet tool install -g docfx
-docfx docfx.json
+``` csharp
+await app.Services.InitializeGeauxLocalizationDatabaseAsync();
 ```
 
-The generated site will be available under the `_site` folder.
+This uses:
 
-## License
-MIT License © Brent Lee Rigsby / GeauxCajunIT
+- LocalizationKeyScanner
+
+- ModelAttributeSeeder
+
+- CultureSeeder
+
+- KeySeeder
+
+## 🌍 Using IStringLocalizer
+``` csharp
+public class MyService
+{
+    private readonly IStringLocalizer<MyService> _localizer;
+
+    public MyService(IStringLocalizer<MyService> localizer)
+    {
+        _localizer = localizer;
+    }
+
+    public string GetGreeting()
+    {
+        return _localizer["Hello"];
+    }
+}
+```
+
+Tenant behavior:
+
+- TenantId = null → global translation
+
+- TenantId != null → tenant-scoped translation
+
+Global and tenant translations are stored and enforced separately.
+
+## 📤 Export & 📥 Import (Language Packs)
+The core library exposes:
+
+- LocalizationExportService
+
+- LocalizationImportService
+
+The admin RCL (Geaux.Localization.Admin) wires these into:
+
+- JSON export/import
+
+- CSV export/import
+
+- ZIP export/import (all cultures)
+
+See the Admin documentation in the GitHub wiki for routes and UI usage.
+
+## 🧪 Testing
+The test project includes coverage for:
+
+- Culture resolution
+
+- Tenant scoping
+
+- Seeding behavior
+
+- EF Core integration
+
+- Export/import behavior
+
+Run tests:
+
+``` bash
+dotnet test
+```
+
+## 📚 Documentation & Wiki
+- Repository: https://github.com/GeauxCajunIT/Geaux.Localization
+
+- Wiki: https://github.com/GeauxCajunIT/Geaux.Localization/wiki
+
+Wiki includes:
+
+- Getting Started
+
+- Configuration
+
+- Admin UI
+
+- Export/Import
+
+- Seeding & Maintenance
+
+- Multi-tenant behavior
+
+## 🧩 Project Structure (Core)
+```text
+src/Geaux.Localization/
+  Attributes/
+  Config/
+  Contexts/
+  EFCore/
+    EntityConfiguration/
+    Interceptors/
+    Seeding/
+    Startup/
+  Extensions/
+  Interfaces/
+  Migrations/
+  Models/
+  Resources/
+  Scanning/
+  Services/
+    Engine/
+    ExportImport/
+    Maintenance/
+    Startup/
+ ```
+
+Admin UI lives in Geaux.Localization.Admin as a separate RCL.
+
+## 🤝 Contributing
+Contributions are welcome!
+
+- Fork the repo
+
+- Create a feature branch
+
+- Add tests where appropriate
+
+- Open a pull request
+
+See the CONTRIBUTING page for guidelines.
+
+## 📜 License
+MIT

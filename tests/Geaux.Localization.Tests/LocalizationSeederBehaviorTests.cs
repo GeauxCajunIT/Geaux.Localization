@@ -1,68 +1,83 @@
 using FluentAssertions;
 using Geaux.Localization.Attributes;
 using Geaux.Localization.Contexts;
-using Geaux.Localization.Services;
-using Microsoft.Data.Sqlite;
+using Geaux.Localization.EFCore.Seeding;
+using Geaux.Localization.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using System.Reflection;
 
-namespace Geaux.Localization.Tests;
-
 public class LocalizationSeederBehaviorTests
 {
-    private sealed class SeedModel
+    private IDbContextFactory<GeauxLocalizationDbContext> CreateFactory()
     {
-        [Localized("Seed.Key", DisplayNameKey = "Seed.DisplayName", ErrorMessageKey = "Seed.Error")]
-        public string Name { get; set; } = string.Empty;
+        DbContextOptions<GeauxLocalizationDbContext> options = new DbContextOptionsBuilder<GeauxLocalizationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        return new PooledDbContextFactory<GeauxLocalizationDbContext>(options);
     }
 
     [Fact]
-    public async Task SeedAsync_creates_missing_keys_and_is_idempotent()
+    public async Task Seeder_CreatesMissingKeys_And_DefaultValues()
     {
-        using SqliteConnection conn = new SqliteConnection("Filename=:memory:");
-        await conn.OpenAsync();
+        // Arrange
+        IDbContextFactory<GeauxLocalizationDbContext> factory = CreateFactory();
 
-        DbContextOptions<GeauxLocalizationDbContext> options = new DbContextOptionsBuilder<GeauxLocalizationDbContext>()
-            .UseSqlite(conn)
-            .Options;
+        Assembly[] assemblies = new[] { typeof(TestLocalizedModel).Assembly };
+        Type[] modelTypes = new[] { typeof(TestLocalizedModel) };
+        var cultures = new[] { "en-US", "fr-FR" };
 
-        // Create schema once
-        await using (var db = new GeauxLocalizationDbContext(options))
-        {
-            await db.Database.EnsureCreatedAsync();
-        }
+        var seeder = new KeySeeder(assemblies);
 
-        // Factory for the seeder (prevents disposed context issues)
-        var factory = new PooledDbContextFactory<GeauxLocalizationDbContext>(options);
+        // Act
+        await seeder.SeedAsync(factory, modelTypes, cultures);
 
-        // New seeder ctor only takes assemblies
-        LocalizationSeeder seeder = new LocalizationSeeder(new[] { Assembly.GetExecutingAssembly() });
+        await using GeauxLocalizationDbContext db = await factory.CreateDbContextAsync();
 
-        // Seed first time (scan assemblies)
-        await seeder.SeedAsync(
-            factory: factory,
-            modelTypes: Array.Empty<Type>(),              // empty => scan assemblies passed to ctor
-            supportedCultures: new[] { "en-US" },
-            tenantId: "T1",
-            overwriteExisting: false);
+        // Assert: Keys created
+        List<LocalizationKey> keys = await db.LocalizationKeys.ToListAsync();
+        keys.Should().NotBeEmpty();
+        keys.Should().Contain(k => k.Key == "Test.Name");
 
-        // Verify values created
-        await using (var db = new GeauxLocalizationDbContext(options))
-        {
-            var count1 = await db.LocalizationValues.CountAsync();
-            count1.Should().BeGreaterThanOrEqualTo(3);
+        // Assert: Values created for each culture
+        List<LocalizationValue> values = await db.LocalizationValues.ToListAsync();
+        values.Should().HaveCount(cultures.Length);
 
-            // Seed again => idempotent
-            await seeder.SeedAsync(
-                factory: factory,
-                modelTypes: Array.Empty<Type>(),
-                supportedCultures: new[] { "en-US" },
-                tenantId: "T1",
-                overwriteExisting: false);
+        values.Should().Contain(v => v.Culture == "en-US");
+        values.Should().Contain(v => v.Culture == "fr-FR");
+    }
 
-            var count2 = await db.LocalizationValues.CountAsync();
-            count2.Should().Be(count1);
-        }
+    [Fact]
+    public async Task Seeder_DoesNotDuplicateKeys_OnSecondRun()
+    {
+        // Arrange
+        IDbContextFactory<GeauxLocalizationDbContext> factory = CreateFactory();
+
+        Assembly[] assemblies = new[] { typeof(TestLocalizedModel).Assembly };
+        Type[] modelTypes = new[] { typeof(TestLocalizedModel) };
+        var cultures = new[] { "en-US" };
+
+        var seeder = new KeySeeder(assemblies);
+
+        // Act
+        await seeder.SeedAsync(factory, modelTypes, cultures);
+        await seeder.SeedAsync(factory, modelTypes, cultures);
+
+        await using GeauxLocalizationDbContext db = await factory.CreateDbContextAsync();
+
+        // Assert
+        List<LocalizationKey> keys = await db.LocalizationKeys.ToListAsync();
+        keys.Should().HaveCount(1);
+
+        List<LocalizationValue> values = await db.LocalizationValues.ToListAsync();
+        values.Should().HaveCount(1);
+    }
+
+    // Test model with LocalizedAttribute
+    private sealed class TestLocalizedModel
+    {
+        [Localized("Test.Name")]
+        public string Name { get; set; } = "";
     }
 }

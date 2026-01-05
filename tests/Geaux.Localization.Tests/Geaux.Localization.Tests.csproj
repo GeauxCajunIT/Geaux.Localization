@@ -27,7 +27,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Geaux.Localization.csproj" />
+    <ProjectReference Include="..\..\src\Geaux.Localization\src\Geaux.Localization.csproj" />
   </ItemGroup>
 
   <ItemGroup>

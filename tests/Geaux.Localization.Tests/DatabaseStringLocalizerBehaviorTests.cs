@@ -2,7 +2,7 @@ using FluentAssertions;
 using Geaux.Localization.Config;
 using Geaux.Localization.Contexts;
 using Geaux.Localization.Models;
-using Geaux.Localization.Services;
+using Geaux.Localization.Services.Engine;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -35,7 +35,7 @@ public class DatabaseStringLocalizerBehaviorTests
         return k.Id;
     }
 
-    private static DatabaseStringLocalizer CreateLocalizer(
+    private static LocalizationStringLocalizer CreateLocalizer(
         IDbContextFactory<GeauxLocalizationDbContext> factory,
         string culture,
         string? tenantId = null)
@@ -47,7 +47,7 @@ public class DatabaseStringLocalizerBehaviorTests
             TenantId = tenantId
         });
 
-        return new DatabaseStringLocalizer(
+        return new LocalizationStringLocalizer(
             factory,
             options,
             resourceName: "Tests",

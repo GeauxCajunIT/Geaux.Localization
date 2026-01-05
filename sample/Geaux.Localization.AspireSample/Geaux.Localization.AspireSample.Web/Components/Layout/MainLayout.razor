@@ -1,0 +1,43 @@
+﻿@inherits LayoutComponentBase
+@inject ThemeService ThemeService
+@using Geaux.Shared.Activity
+
+<MudThemeProvider Theme="@(_isDark? DarkTheme : LightTheme)" IsDarkMode="_isDark" />
+    <MudPopoverProvider />
+    <MudDialogProvider />
+    <MudSnackbarProvider />
+    <MudLayout>
+        <AppBar />
+        <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
+            <NavMenu />
+             <LocalizationAdminNavbar />
+        </MudDrawer>
+        <MudMainContent>
+            @Body
+        </MudMainContent>
+
+    </MudLayout>
+
+@code {
+
+    bool _drawerOpen = true;
+
+    private MudTheme LightTheme = new MudTheme();
+   
+    private MudTheme DarkTheme = new MudTheme()
+    {
+        PaletteDark = new PaletteDark()
+    };
+
+    private bool _isDark => ThemeService.IsDarkMode;
+
+    void DrawerToggle()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    private async Task ToggleTheme()
+    {
+        await ThemeService.SetDarkMode(_isDark);
+    }   
+}

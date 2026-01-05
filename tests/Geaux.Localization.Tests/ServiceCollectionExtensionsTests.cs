@@ -27,7 +27,7 @@ public sealed class ServiceCollectionExtensionsTests
         ServiceCollection services = new ServiceCollection();
 
         // Act
-        services.AddGeauxLocalization(config, options =>
+        services.AddGeauxLocalizationCore(config, options =>
         {
             options.ConnectionStringName = "LocalizationConnection";
             options.MigrationsAssembly = "Geaux.Localization";
@@ -60,7 +60,7 @@ public sealed class ServiceCollectionExtensionsTests
         // Act + Assert
         Exception ex = Assert.ThrowsAny<Exception>(() =>
         {
-            services.AddGeauxLocalization(config, options =>
+            services.AddGeauxLocalizationCore(config, options =>
             {
                 options.ConnectionStringName = "LocalizationConnection";
                 options.MigrationsAssembly = "Geaux.Localization";
@@ -88,7 +88,7 @@ public sealed class ServiceCollectionExtensionsTests
         ServiceCollection services = new ServiceCollection();
 
         // Act
-        services.AddGeauxLocalization(config, options =>
+        services.AddGeauxLocalizationCore(config, options =>
         {
             options.ConnectionStringName = "LocalizationConnection";
             options.MigrationsAssembly = "Geaux.Localization";

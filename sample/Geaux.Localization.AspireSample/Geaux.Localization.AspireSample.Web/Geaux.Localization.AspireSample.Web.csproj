@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+	  <RazorCompileOnBuild>true</RazorCompileOnBuild>
+	  <RazorCompileOnPublish>true</RazorCompileOnPublish>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Geaux.Localization.Admin\src\Geaux.Localization.Admin\Geaux.Localization.Admin.csproj" />
+    <ProjectReference Include="..\..\..\src\Geaux.Localization\src\Geaux.Localization.csproj" />
+    <ProjectReference Include="..\..\..\src\Geaux.Shared\src\Geaux.Shared\Geaux.Shared.csproj" />
+    <ProjectReference Include="..\Geaux.Localization.AspireSample.ServiceDefaults\Geaux.Localization.AspireSample.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.StackExchange.Redis.OutputCaching" Version="13.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.11">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="MudBlazor" Version="8.15.0" />
+  </ItemGroup>
+
+</Project>

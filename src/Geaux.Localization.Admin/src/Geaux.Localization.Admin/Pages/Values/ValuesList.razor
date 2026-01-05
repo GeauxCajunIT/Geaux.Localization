@@ -1,0 +1,165 @@
+﻿@page "/admin/localization/values"
+@using Geaux.Localization.Admin.DTOs
+@inject LocalizationValueAdminService ValueService
+@inject CultureAdminService CultureService
+@inject NavigationManager Nav
+
+<PageTitle>Localization Values</PageTitle>
+
+<MudPaper Class="pa-6" Elevation="1">
+    <MudStack Spacing="3">
+
+        <MudText Typo="Typo.h5">Localization Values</MudText>
+
+        <!-- Sticky Controls -->
+        <MudPaper Class="pa-4" Elevation="0" Style="position:sticky; top:0; background:var(--mud-palette-background); z-index:5;">
+            <MudStack Spacing="2">
+
+                <!-- Culture Selector -->
+                <MudSelect T="string"
+                           Label="Select Culture"
+                           Variant="Variant.Outlined"
+                           @bind-Value="_selectedCulture"
+                           OnChange="CultureChanged"
+                           FullWidth="true">
+
+                    @foreach (var c in _cultures)
+                    {
+                        <MudSelectItem Value="@c.CultureCode">
+                            @c.DisplayName (@c.CultureCode)
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+
+                <!-- Search -->
+                <MudTextField @bind-Value="_search"
+                              Placeholder="Search keys..."
+                              Variant="Variant.Outlined"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Immediate="true"
+                              OnDebounceIntervalElapsed="ApplySearch"
+                              DebounceInterval="200"
+                              FullWidth="true" />
+            </MudStack>
+        </MudPaper>
+
+        @if (_loading)
+        {
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+        }
+        else if (_filteredValues.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">
+                No values found for this culture.
+            </MudAlert>
+        }
+        else
+        {
+            <MudTable Items="_filteredValues" Hover="true" Dense="true">
+
+                <HeaderContent>
+                    <MudTh>Key</MudTh>
+                    <MudTh>Value</MudTh>
+                    <MudTh></MudTh>
+                </HeaderContent>
+
+                <RowTemplate>
+                    <MudTd>@context.Key</MudTd>
+
+                    <MudTd>
+                        <MudTextField @bind-Value="context.Value"
+                                      Variant="Variant.Outlined"
+                                      FullWidth="true"
+                                      OnBlur="@(async _ => await SaveValue(context))" />
+                    </MudTd>
+
+                    <MudTd>
+                        <MudIconButton Icon="@Icons.Material.Filled.Save"
+                                       Color="Color.Primary"
+                                       OnClick="@(async _ => await SaveValue(context))" />
+                    </MudTd>
+                </RowTemplate>
+
+            </MudTable>
+        }
+
+    </MudStack>
+</MudPaper>
+
+@code {
+    private List<LocalizationCultureDto> _cultures = new();
+    private List<LocalizationValueDto> _values = new();
+    private List<LocalizationValueDto> _filteredValues = new();
+
+    private string? _selectedCulture;
+    private string _search = string.Empty;
+
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cultures = await CultureService.GetAllCulturesAsync();
+
+        // Read culture from query string
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        var cultureFromQuery = query["culture"];
+
+        if (!string.IsNullOrWhiteSpace(cultureFromQuery) &&
+            _cultures.Any(c => c.CultureCode == cultureFromQuery))
+        {
+            _selectedCulture = cultureFromQuery;
+        }
+        else
+        {
+            _selectedCulture = _cultures.FirstOrDefault(c => c.IsActive)?.CultureCode
+                               ?? _cultures.FirstOrDefault()?.CultureCode;
+        }
+
+        if (_selectedCulture is not null)
+            await LoadValues();
+    }
+
+    private async Task CultureChanged(string culture)
+    {
+        _selectedCulture = culture;
+
+        // Update URL
+        Nav.NavigateTo($"/admin/localization/values?culture={culture}", replace: true);
+
+        await LoadValues();
+    }
+
+    private async Task LoadValues()
+    {
+        if (_selectedCulture is null)
+            return;
+
+        _loading = true;
+
+        _values = await ValueService.GetValuesForCultureAsync(_selectedCulture);
+        ApplySearch();
+
+        _loading = false;
+    }
+
+    private void ApplySearch()
+    {
+        if (string.IsNullOrWhiteSpace(_search))
+        {
+            _filteredValues = _values;
+        }
+        else
+        {
+            _filteredValues = _values
+                .Where(v => v.Key.Contains(_search, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+    }
+
+    private async Task SaveValue(LocalizationValueDto dto)
+    {
+        await ValueService.UpsertValueAsync(dto);
+    }
+}

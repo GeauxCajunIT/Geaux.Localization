@@ -1,7 +1,7 @@
 ﻿
 using FluentAssertions;
 using Geaux.Localization.Extensions;
-using Geaux.Localization.Services;
+using Geaux.Localization.Services.Engine;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
@@ -24,12 +24,12 @@ namespace Geaux.Localization.Tests
 
             ServiceCollection services = new ServiceCollection();
 
-            services.AddGeauxLocalization(config);
+            services.AddGeauxLocalizationCore(config);
 
             ServiceProvider sp = services.BuildServiceProvider();
 
             IStringLocalizerFactory factory = sp.GetRequiredService<IStringLocalizerFactory>();
-            factory.Should().BeOfType<DatabaseStringLocalizerFactory>();
+            factory.Should().BeOfType<LocalizationStringLocalizerFactory>();
         }
 
 
@@ -43,7 +43,7 @@ namespace Geaux.Localization.Tests
             ServiceCollection services = new ServiceCollection();
             services.AddSingleton<IConfiguration>(config);
 
-            services.AddGeauxLocalization(config, opts =>
+            services.AddGeauxLocalizationCore(config, opts =>
             {
                 opts.Provider = "Sqlite";
                 opts.ConnectionString = "Data Source=:memory:"; // ✅ required

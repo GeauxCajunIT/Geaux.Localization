@@ -1,0 +1,84 @@
+﻿@inject NavigationManager Nav
+@inject IConfiguration Config
+
+<MudMenu OffsetY="true" OpenMenuOnHover="true">
+
+    <ActivatorContent>
+        <MudAvatar Size="Size.Medium"
+                   Class="cursor-pointer"
+                   Image="@GetFlagForCulture(_culture)"
+                   Icon="@(!HasFlag(_culture) ? Icons.Material.Filled.Language : null)" />
+    </ActivatorContent>
+
+    <ChildContent>
+        @foreach (var c in _cultures)
+        {
+            <MudMenuItem OnClick="@(() => OnCultureChanged(c))">
+                <MudAvatar Size="Size.Small"
+                           Image="@GetFlagForCulture(c)"
+                           Icon="@(!HasFlag(c) ? Icons.Material.Filled.Language : null)"
+                           Class="mr-2" />
+                @GetDisplayName(c)
+            </MudMenuItem>
+        }
+    </ChildContent>
+
+</MudMenu>
+
+@code {
+    private string _culture = "en-US";
+    private List<string> _cultures = new();
+
+    protected override void OnInitialized()
+    {
+        _cultures =
+            Config.GetSection("LocalizationAdmin:Cultures").Get<List<string>>()
+            ?? new() { "en-US" };
+
+        _culture = CultureInfo.CurrentUICulture.Name;
+    }
+
+    private void OnCultureChanged(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return;
+
+        _culture = value;
+
+        var relative = Nav.ToBaseRelativePath(Nav.Uri);
+        if (!relative.StartsWith("/"))
+            relative = "/" + relative;
+
+        var target =
+            $"/culture/set?culture={Uri.EscapeDataString(value)}&returnUrl={Uri.EscapeDataString(relative)}";
+
+        Nav.NavigateTo(target, forceLoad: true);
+    }
+
+    private static string GetDisplayName(string culture)
+    {
+        try
+        {
+            var ci = new CultureInfo(culture);
+            return $"{ci.NativeName} ({ci.Name})";
+        }
+        catch
+        {
+            return culture;
+        }
+    }
+
+    // --- Flag helpers (you can swap these for your own assets) ---
+
+    private string? GetFlagForCulture(string culture)
+    {
+        // Example: map cultures to flag images in wwwroot/images/flags
+        var code = culture.Split('-').Last().ToLowerInvariant();
+        var path = $"/images/flags/{code}.svg";
+
+        return System.IO.File.Exists($"wwwroot{path}") ? path : null;
+    }
+
+    private bool HasFlag(string culture)
+        => GetFlagForCulture(culture) is not null;
+}

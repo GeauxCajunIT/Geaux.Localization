@@ -1,6 +1,6 @@
 ﻿using Geaux.Localization.Config;
+using Geaux.Localization.EFCore.Interceptors;
 using Geaux.Localization.Extensions;
-using Geaux.Localization.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -17,7 +17,7 @@ namespace Geaux.Localization.Tests
             ServiceCollection services = new ServiceCollection();
             services.AddSingleton<IConfiguration>(config);
 
-            services.AddGeauxLocalization(config, opts =>
+            services.AddGeauxLocalizationCore(config, opts =>
             {
                 opts.Provider = "Sqlite";
                 opts.ConnectionString = "Data Source=:memory:"; // ✅ avoid config lookup
@@ -43,7 +43,7 @@ namespace Geaux.Localization.Tests
             ServiceCollection services = new ServiceCollection();
             services.AddSingleton<IConfiguration>(config);
 
-            services.AddGeauxLocalization(config, opts =>
+            services.AddGeauxLocalizationCore(config, opts =>
             {
                 opts.Provider = "Sqlite";
                 opts.ConnectionString = "Data Source=:memory:"; // ✅ required

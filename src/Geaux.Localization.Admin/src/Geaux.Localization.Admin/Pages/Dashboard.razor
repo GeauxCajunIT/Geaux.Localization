@@ -1,0 +1,150 @@
+﻿@page "/admin/localization/dashboard"
+@using Geaux.Localization.Admin.DTOs
+@inject DashboardService DashboardService
+@inject NavigationManager Nav
+
+<PageTitle>Localization Dashboard</PageTitle>
+
+<MudPaper Class="pa-6" Elevation="1">
+    <MudStack Spacing="3">
+
+        <MudText Typo="Typo.h5">Localization Dashboard</MudText>
+
+        @if (_loading)
+        {
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+        }
+        else
+        {
+            <!-- Summary Cards -->
+            <MudGrid GutterSize="3">
+                <MudItem xs="12" sm="6" md="3">
+                    <MudPaper Class="pa-4" Elevation="1">
+                        <MudText Typo="Typo.subtitle2">Total Keys</MudText>
+                        <MudText Typo="Typo.h5">@_model.TotalKeys</MudText>
+                    </MudPaper>
+                </MudItem>
+
+                <MudItem xs="12" sm="6" md="3">
+                    <MudPaper Class="pa-4" Elevation="1">
+                        <MudText Typo="Typo.subtitle2">Total Cultures</MudText>
+                        <MudText Typo="Typo.h5">@_model.TotalCultures</MudText>
+                    </MudPaper>
+                </MudItem>
+
+                <MudItem xs="12" sm="6" md="3">
+                    <MudPaper Class="pa-4" Elevation="1">
+                        <MudText Typo="Typo.subtitle2">Active Cultures</MudText>
+                        <MudText Typo="Typo.h5">@_model.ActiveCultures</MudText>
+                    </MudPaper>
+                </MudItem>
+
+                <MudItem xs="12" sm="6" md="3">
+                    <MudPaper Class="pa-4" Elevation="1">
+                        <MudText Typo="Typo.subtitle2">Requires Review</MudText>
+                        <MudText Typo="Typo.h5">@_model.CulturesRequiringReview</MudText>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+
+            <!-- Culture Stats (Expandable Panels) -->
+            <MudPaper Class="pa-4 mt-4" Elevation="1">
+                <MudText Typo="Typo.h6">Culture Coverage</MudText>
+
+                <MudExpansionPanels Elevation="0" Class="mt-2">
+                    @foreach (var c in _model.CultureStats)
+                    {
+                        <MudExpansionPanel Text="@($"{c.DisplayName} ({c.CultureCode})")">
+                            <MudStack Spacing="1">
+                                <MudText>Total Values: @c.TotalValues</MudText>
+                                <MudText>Missing Values: @c.MissingValues</MudText>
+
+                                <MudButton Variant="Variant.Text"
+                                           Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.Translate"
+                                           Href="@($"/admin/localization/values?culture={c.CultureCode}")">
+                                    Edit Values
+                                </MudButton>
+                            </MudStack>
+                        </MudExpansionPanel>
+                    }
+                </MudExpansionPanels>
+            </MudPaper>
+
+            <!-- Maintenance Section -->
+            <MudPaper Class="pa-4 mt-4" Elevation="1">
+                <MudText Typo="Typo.h6">Maintenance</MudText>
+
+                <MudStack Direction="Row" Spacing="2" Class="mt-2">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Size="Size.Large"
+                               StartIcon="@Icons.Material.Filled.Upload"
+                               Href="/admin/localization/language-packs">
+                        Upload Language Pack
+                    </MudButton>
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Size="Size.Large"
+                               StartIcon="@Icons.Material.Filled.Key"
+                               Href="/admin/localization/keys">
+                        Manage Keys
+                    </MudButton>
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Size="Size.Large"
+                               StartIcon="@Icons.Material.Filled.List"
+                               Href="/admin/localization/values">
+                        Manage Values
+                    </MudButton>
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Warning"
+                               Size="Size.Large"
+                               StartIcon="@Icons.Material.Filled.Build"
+                               OnClick="RebuildMissing">
+                        Rebuild Missing Translations
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+
+            <!-- Recent Activity -->
+            <MudPaper Class="pa-4 mt-4" Elevation="1">
+                <MudText Typo="Typo.h6">Recent Activity</MudText>
+
+                <MudTable Items="_model.RecentActivity" Dense="true" Hover="true" Class="mt-2">
+                    <HeaderContent>
+                        <MudTh>Timestamp</MudTh>
+                        <MudTh>Event</MudTh>
+                        <MudTh>Message</MudTh>
+                    </HeaderContent>
+
+                    <RowTemplate>
+                        <MudTd>@context.Timestamp.ToLocalTime().ToString("g")</MudTd>
+                        <MudTd>@context.EventType</MudTd>
+                        <MudTd>@context.Message</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    private DashboardDto _model = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _model = await DashboardService.GetDashboardAsync();
+        _loading = false;
+    }
+
+    private async Task RebuildMissing()
+    {
+        // TODO: Hook into your MissingTranslationService
+        // await MissingTranslationService.RebuildAsync();
+    }
+}

@@ -1,0 +1,165 @@
+﻿@page "/admin/localization/cultures"
+@using Geaux.Localization.Admin.DTOs
+@inject CultureAdminService CultureService
+@inject NavigationManager Nav
+
+<PageTitle>Localization Cultures</PageTitle>
+
+<MudPaper Class="pa-6" Elevation="1">
+    <MudStack Spacing="3">
+
+        <MudStack Direction="Row" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.h5">Localization Cultures</MudText>
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="CreateCulture">
+                Create Culture
+            </MudButton>
+        </MudStack>
+
+        <MudTextField @bind-Value="_search"
+                      Placeholder="Search cultures..."
+                      Variant="Variant.Outlined"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Immediate="true"
+                      OnDebounceIntervalElapsed="ApplySearch"
+                      DebounceInterval="200"
+                      FullWidth="true" />
+
+        @if (_loading)
+        {
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+        }
+        else
+        {
+            @foreach (var group in _groupedCultures)
+            {
+                <MudText Typo="Typo.h6" Class="mt-4">@group.Key</MudText>
+
+                <MudTable Items="group.Value" Hover="true" Dense="true">
+
+                    <HeaderContent>
+                        <MudTh>Flag</MudTh>
+                        <MudTh>Culture</MudTh>
+                        <MudTh>Display Name</MudTh>
+                        <MudTh>Active</MudTh>
+                        <MudTh>RTL</MudTh>
+                        <MudTh>Review</MudTh>
+                        <MudTh></MudTh>
+                    </HeaderContent>
+
+                    <RowTemplate>
+                        <MudTd><CultureFlag Culture="@context" /></MudTd>
+                        <MudTd>@context.CultureCode</MudTd>
+                        <MudTd>@context.DisplayName</MudTd>
+
+                        <MudTd>
+                            <MudSwitch T="bool" @bind-value="@context.IsActive"
+                                       CheckedChanged="@(async (bool v) => { context.IsActive = v; await SaveCulture(context); })" 
+                                       Color="Color.Primary"/>
+                        </MudTd>
+
+                        <MudTd>
+                            <MudSwitch T="bool" @bind-value="@context.IsRightToLeft"
+                                       CheckedChanged="@(async (bool v) => { context.IsRightToLeft = v; await SaveCulture(context); })" 
+                                       Color="Color.Warning" />
+                        </MudTd>
+
+                        <MudTd>
+                            <MudSwitch T="bool" @bind-value="@context.RequiresReview"
+                                       CheckedChanged="@(async (bool v) => { context.RequiresReview = v; await SaveCulture(context); })" 
+                                       Color="Color.Secondary" />
+                        </MudTd>
+
+                        <MudTd>
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                           Color="Color.Primary"
+                                           OnClick="@(() => EditCulture(context.Id))" />
+
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                           Color="Color.Error"
+                                           OnClick="@(() => DeleteCulture(context))" />
+                        </MudTd>
+                    </RowTemplate>
+
+                </MudTable>
+            }
+        }
+
+    </MudStack>
+</MudPaper>
+
+@code {
+    private List<LocalizationCultureDto> _cultures = new();
+    private Dictionary<string, List<LocalizationCultureDto>> _groupedCultures = new();
+    private string _search = string.Empty;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCultures();
+    }
+
+    private async Task LoadCultures()
+    {
+        _loading = true;
+
+        _cultures = await CultureService.GetAllCulturesAsync();
+        ApplySearch();
+
+        _loading = false;
+    }
+
+    private void ApplySearch()
+    {
+        var filtered = string.IsNullOrWhiteSpace(_search)
+            ? _cultures
+            : _cultures.Where(c =>
+                c.CultureCode.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                c.DisplayName.Contains(_search, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        _groupedCultures = filtered
+            .GroupBy(c => GetRegion(c.CultureCode))
+            .OrderBy(g => g.Key)
+            .ToDictionary(g => g.Key, g => g.ToList());
+    }
+
+    private string GetRegion(string culture)
+    {
+        if (culture.StartsWith("en") || culture.StartsWith("fr") || culture.StartsWith("de") || culture.StartsWith("es") || culture.StartsWith("it"))
+            return "Western Europe";
+        if (culture.StartsWith("nl") || culture.StartsWith("sv") || culture.StartsWith("no") || culture.StartsWith("da") || culture.StartsWith("fi"))
+            return "Northern Europe";
+        if (culture.StartsWith("pl") || culture.StartsWith("cs") || culture.StartsWith("sk") || culture.StartsWith("sl") || culture.StartsWith("hu") || culture.StartsWith("ro") || culture.StartsWith("bg"))
+            return "Eastern Europe";
+        if (culture.StartsWith("ru") || culture.StartsWith("uk"))
+            return "Cyrillic";
+        if (culture.StartsWith("ar") || culture.StartsWith("he"))
+            return "Middle East";
+        if (culture.StartsWith("hi") || culture.StartsWith("bn") || culture.StartsWith("ta") || culture.StartsWith("th") || culture.StartsWith("vi"))
+            return "Asia";
+        if (culture.StartsWith("zh") || culture.StartsWith("ja") || culture.StartsWith("ko"))
+            return "CJK";
+        if (culture.StartsWith("pt") || culture.StartsWith("es-MX"))
+            return "Latin America";
+
+        return "Other";
+    }
+    
+    private void CreateCulture() => Nav.NavigateTo("/admin/localization/cultures/create");
+    private void EditCulture(int id) => Nav.NavigateTo($"/admin/localization/cultures/edit/{id}");
+
+    private async Task SaveCulture(LocalizationCultureDto culture)
+    {
+        await CultureService.UpdateCultureAsync(culture);
+    }
+
+    private async Task DeleteCulture(LocalizationCultureDto culture)
+    {
+        await CultureService.DeleteCultureAsync(culture.Id);
+        await LoadCultures();
+    }
+}

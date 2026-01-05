@@ -1,0 +1,55 @@
+﻿@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<MudPaper Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6">Localization Health</MudText>
+
+    <MudText Typo="Typo.body2" Class="mt-2">
+        Ensure all keys are mapped to all cultures.
+    </MudText>
+
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               OnClick="RunRepair"
+               Disabled="@IsRepairing"
+               Class="mt-3">
+        @if (IsRepairing)
+        {
+            <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="mr-2" />
+            <span>Repairing…</span>
+        }
+        else
+        {
+            <span>Run Repair</span>
+        }
+    </MudButton>
+</MudPaper>
+
+@code {
+    private bool IsRepairing;
+
+    private async Task RunRepair()
+    {
+        try
+        {
+            IsRepairing = true;
+            var response = await Http.PostAsync("/admin/localization/api/maintenance/repair", null);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Localization values repaired successfully.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Repair failed.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            IsRepairing = false;
+        }
+    }
+}

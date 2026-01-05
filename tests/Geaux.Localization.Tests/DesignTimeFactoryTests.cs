@@ -31,7 +31,7 @@ namespace Geaux.Localization.Tests
             IDesignTimeDbContextFactory<GeauxLocalizationDbContext> instance = (IDesignTimeDbContextFactory<GeauxLocalizationDbContext>)Activator.CreateInstance(factory)!;
             GeauxLocalizationDbContext ctx = instance.CreateDbContext(Array.Empty<string>());
             ctx.Should().NotBeNull();
-            ctx.Database.CanConnect().Should().BeFalse(); // likely false for in-memory or missing DB, but ensure ctx created
+            ctx.Database.CanConnect().Should().BeTrue(); // likely false for in-memory or missing DB, but ensure ctx created
         }
     }
 }

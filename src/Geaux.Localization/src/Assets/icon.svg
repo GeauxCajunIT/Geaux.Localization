@@ -1,0 +1,35 @@
+﻿<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1B3A57" />
+      <stop offset="100%" stop-color="#0F2233" />
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="256" height="256" rx="40" fill="url(#bg)" />
+
+  <!-- Globe / localization circle -->
+  <circle cx="128" cy="128" r="72" fill="none" stroke="#F5F5F5" stroke-width="8" />
+
+  <!-- Latitude lines -->
+  <ellipse cx="128" cy="128" rx="56" ry="24" fill="none" stroke="#F5F5F5" stroke-width="4" />
+  <ellipse cx="128" cy="128" rx="56" ry="40" fill="none" stroke="#F5F5F5" stroke-width="2" opacity="0.7" />
+
+  <!-- Longitude lines -->
+  <path d="M128 56 C 104 80 96 104 96 128 C 96 152 104 176 128 200" fill="none" stroke="#F5F5F5" stroke-width="4" />
+  <path d="M128 56 C 152 80 160 104 160 128 C 160 152 152 176 128 200" fill="none" stroke="#F5F5F5" stroke-width="4" />
+
+  <!-- Tenant / key marker -->
+  <circle cx="176" cy="96" r="14" fill="#F5C14E" />
+  <path d="M176 90 L176 102" stroke="#1B3A57" stroke-width="3" stroke-linecap="round" />
+  <circle cx="176" cy="88" r="3" fill="#1B3A57" />
+
+  <!-- Gx monogram -->
+  <text x="84" y="144"
+        font-family="Segoe UI, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+        font-size="52"
+        font-weight="700"
+        fill="#F5F5F5">
+    Gx
+  </text>
+</svg>

@@ -1,0 +1,91 @@
+﻿@using Geaux.Localization.Admin.DTOs
+@inject CultureAdminService CultureService
+@inject NavigationManager Nav
+@inject ThemeService ThemeService
+
+<MudAppBar Elevation="1">
+        <!-- Left side -->
+        <MudText Typo="Typo.h6">Geaux Localization Admin</MudText>
+
+        <MudSpacer />
+
+        <!-- Theme Toggle -->
+        @if (_initialized)
+        {
+            <MudIconButton Icon="@(_isDark ? Icons.Material.Filled.DarkMode : Icons.Material.Filled.LightMode)"
+                           Color="Color.Inherit"
+                           OnClick="ToggleTheme" />
+        }
+
+        <!-- Language Selector -->
+        <MudMenu Color="Color.Inherit"
+                 Dense="true"
+                 MaxHeight="300">
+        <CultureFlag Culture="@_currentCultureModel" />
+            @foreach (var c in _cultures)
+            {
+                <MudMenuItem OnClick="@(() => ChangeCulture(c.CultureCode))">
+                    <CultureFlag Culture="@c" />
+                    <span class="ml-2">@c.DisplayName (@c.CultureCode)</span>
+                </MudMenuItem>
+            }
+        </MudMenu>
+</MudAppBar>
+
+@code {
+    private List<LocalizationCultureDto> _cultures = new();
+    private string _currentCulture = "en-US";
+    private bool _isDark;
+    private bool _initialized;
+    private LocalizationCultureDto _currentCultureModel;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load cultures
+        _cultures = await CultureService.GetAllCulturesAsync();
+
+        // Determine current culture from URL or fallback
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        _currentCulture = query["culture"]
+            ?? _cultures.FirstOrDefault(c => c.IsActive)?.CultureCode
+            ?? "en-US";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Initialize theme AFTER prerendering
+            await ThemeService.InitializeAsync();
+            _isDark = ThemeService.IsDarkMode;
+
+            _initialized = true;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleTheme()
+    {
+        _isDark = !_isDark;
+        await ThemeService.SetDarkMode(_isDark);
+    }
+
+    private void ChangeCulture(string culture)
+    {
+        Nav.NavigateTo($"/culture/set?culture={culture}", forceLoad: true);
+    }
+
+    private string GetFlag(string culture)
+    {
+        return culture switch
+        {
+            "en-US" => Icons.Material.Filled.Flag,
+            "fr-FR" => Icons.Material.Filled.FlagCircle,
+            "es-ES" => Icons.Material.Filled.Flag,
+            "de-DE" => Icons.Material.Filled.Flag,
+            _ => Icons.Material.Filled.Language
+        };
+    }
+}

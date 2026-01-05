@@ -1,0 +1,21 @@
+﻿@using Geaux.Localization.Admin.DTOs
+@using Geaux.Localization.Models
+
+@if (Culture is null)
+{
+    <MudIcon Icon="@Icons.Material.Filled.Flag" />
+}
+else
+{
+    <img width="50px"
+         height="30px"
+         src="@GetFlagPath(Culture)"
+         class="culture-flag" />
+}
+
+@code {
+    [Parameter] public LocalizationCultureDto? Culture { get; set; }
+
+    private string GetFlagPath(LocalizationCultureDto c)
+        => $"/_content/Geaux.Localization.Admin/images/flags/{c.FlagCode}.svg";
+}

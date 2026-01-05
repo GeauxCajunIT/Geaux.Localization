@@ -19,16 +19,22 @@
     <File Path="docs/articles/toc.yml" />
     <File Path="docs/articles/troubleshooting.md" />
   </Folder>
-  <Folder Name="/Sample/">
-    <Project Path="sample/Geaux.Localization.SampleBlazor/Geaux.Localization.SampleBlazor.csproj">
-      <Build Solution="Release|*" Project="false" />
-    </Project>
+  <Folder Name="/Sample/" />
+  <Folder Name="/Sample/Aspire/">
+    <Project Path="sample/Geaux.Localization.AspireSample/Geaux.Localization.AspireSample.ApiService/Geaux.Localization.AspireSample.ApiService.csproj" />
+    <Project Path="sample/Geaux.Localization.AspireSample/Geaux.Localization.AspireSample.AppHost/Geaux.Localization.AspireSample.AppHost.csproj" />
+    <Project Path="sample/Geaux.Localization.AspireSample/Geaux.Localization.AspireSample.ServiceDefaults/Geaux.Localization.AspireSample.ServiceDefaults.csproj" />
+    <Project Path="sample/Geaux.Localization.AspireSample/Geaux.Localization.AspireSample.Web/Geaux.Localization.AspireSample.Web.csproj" />
   </Folder>
   <Folder Name="/src/">
-    <Project Path="src/Geaux.Localization.csproj" />
+    <Project Path="src/Geaux.Localization.Admin/src/Geaux.Localization.Admin/Geaux.Localization.Admin.csproj" />
+    <Project Path="src/Geaux.Localization/src/Geaux.Localization.csproj" />
+    <Project Path="src/Geaux.Shared/src/Geaux.Shared/Geaux.Shared.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Geaux.Localization.Admin.Tests/Geaux.Localization.Admin.Tests.csproj" />
     <Project Path="tests/Geaux.Localization.Tests/Geaux.Localization.Tests.csproj" Id="9d4f13ff-d79a-4c08-b99c-3b9a9b085339" />
   </Folder>
   <Folder Name="/tools/" />
+  <Project Path="../Geaux.Shared/src/Geaux.Shared/Geaux.Shared.csproj" Id="05ffc13f-2603-483a-8f03-36b6d0c82ce3" />
 </Solution>

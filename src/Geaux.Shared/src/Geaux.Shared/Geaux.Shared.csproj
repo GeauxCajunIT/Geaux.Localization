@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="UI\AppBar.razor">
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Geaux.GuardClauses" Version="1.2.0" />
+    <PackageReference Include="Geaux.SharedKernal" Version="1.2.0" />
+    <PackageReference Include="MudBlazor" Version="8.15.0" />
+    <PackageReference Include="MudBlazor.ThemeManager" Version="3.0.0" />
+  </ItemGroup>
+
+</Project>

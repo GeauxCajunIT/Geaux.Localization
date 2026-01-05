@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net9.0</TargetFramework>
+		<IsPackable>false</IsPackable>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
+		<PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.0" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.11" />
+		<PackageReference Include="xunit" Version="2.9.3" />
+		<PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+			<PrivateAssets>all</PrivateAssets>
+		</PackageReference>
+		<PackageReference Include="FluentAssertions" Version="8.8.0" />
+		<PackageReference Include="bunit" Version="2.4.2" />
+		<PackageReference Include="MudBlazor" Version="8.15.0" />
+		<PackageReference Include="Microsoft.Playwright" Version="1.57.0" />
+		<PackageReference Include="AngleSharp" Version="1.4.0" />
+		<PackageReference Include="AngleSharp.Css" Version="1.0.0-beta.157" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\..\src\Geaux.Localization.Admin\src\Geaux.Localization.Admin\Geaux.Localization.Admin.csproj" />
+	  <ProjectReference Include="..\..\src\Geaux.Localization\src\Geaux.Localization.csproj" />
+	</ItemGroup>
+
+</Project>

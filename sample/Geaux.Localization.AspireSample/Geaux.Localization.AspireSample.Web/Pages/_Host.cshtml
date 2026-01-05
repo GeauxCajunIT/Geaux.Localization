@@ -1,0 +1,29 @@
+﻿@page "/"
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@using Geaux.Localization.AspireSample.Web.Components
+@using Microsoft.AspNetCore.Components.Web
+
+<!DOCTYPE html>
+<html lang="en">
+<!-- HOST PAGE LOADED -->
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <base href="/" />
+
+    <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet" />
+
+    <component type="typeof(HeadOutlet)" render-mode="Server" />
+</head>
+
+<body>
+    <component type="typeof(App)" render-mode="Server" />
+
+    <script src="_framework/blazor.web.js"></script>
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+</body>
+</html>

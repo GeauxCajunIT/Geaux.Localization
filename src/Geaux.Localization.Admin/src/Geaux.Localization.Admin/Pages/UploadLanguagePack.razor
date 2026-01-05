@@ -1,0 +1,188 @@
+﻿@page "/admin/localization/language-packs"
+@using Geaux.Localization.Admin.DTOs
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.JSInterop
+@inject LanguagePackAdminService PackService
+@inject CultureAdminService CultureService
+@inject IJSRuntime JS
+
+<PageTitle>Language Pack Upload</PageTitle>
+
+<MudPaper Class="pa-6" Elevation="1">
+    <MudStack Spacing="2">
+
+        <MudText Typo="Typo.h5">Language Pack Upload</MudText>
+
+        <!-- Culture Selector -->
+        <MudSelect T="string"
+                   Label="Select Culture"
+                   Variant="Variant.Outlined"
+                   @bind-Value="_selectedCulture"
+                   Class="mb-4"
+                   FullWidth="true">
+
+            @foreach (var c in _cultures)
+            {
+                <MudSelectItem Value="@c.CultureCode">
+                    @c.DisplayName (@c.CultureCode)
+                </MudSelectItem>
+            }
+        </MudSelect>
+
+        <!-- Upload Area -->
+        <MudPaper Class="pa-6 d-flex justify-center align-center"
+                  Style="border: 2px dashed var(--mud-palette-primary); min-height: 150px;"
+                  @ondragover="OnDragOver"
+                  @ondrop="OnDrop">
+
+            <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.UploadFile" Size="Size.Large" Color="Color.Primary" />
+                <MudText>Drag & drop JSON or ZIP file here</MudText>
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Folder"
+                           OnClick="TriggerFilePicker">
+                    Choose File
+                </MudButton>
+
+                <InputFile id="fileInput"
+                           OnChange="OnFileSelected"
+                           @ref="_fileInput"
+                           style="display:none" />
+            </MudStack>
+
+        </MudPaper>
+
+        @if (_fileName is not null)
+        {
+            <MudAlert Severity="Severity.Info" Class="mt-4">
+                Selected File: <b>@_fileName</b>
+            </MudAlert>
+        }
+
+        <!-- Preview -->
+        @if (_previewRows.Count > 0)
+        {
+            <MudPaper Class="pa-4 mt-4" Elevation="1">
+                <MudText Typo="Typo.h6">Preview</MudText>
+
+                <MudTable Items="_previewRows" Dense="true" Hover="true">
+                    <HeaderContent>
+                        <MudTh>Key</MudTh>
+                        <MudTh>Value</MudTh>
+                    </HeaderContent>
+
+                    <RowTemplate>
+                        <MudTd>@context.Key</MudTd>
+                        <MudTd>@context.Value</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+        }
+
+        <!-- Import Button -->
+        @if (_fileStream is not null)
+        {
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Success"
+                       StartIcon="@Icons.Material.Filled.Check"
+                       OnClick="ImportPack"
+                       Class="mt-4">
+                Import Language Pack
+            </MudButton>
+        }
+
+    </MudStack>
+</MudPaper>
+
+@code {
+    private List<LocalizationCultureDto> _cultures = new();
+    private string? _selectedCulture;
+
+    private InputFile? _fileInput;
+    private Stream? _fileStream;
+    private string? _fileName;
+
+    private List<LanguagePackAdminService.LanguagePackPreviewRow> _previewRows = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cultures = await CultureService.GetAllCulturesAsync();
+        _selectedCulture = _cultures.FirstOrDefault(c => c.IsActive)?.CultureCode
+                           ?? _cultures.FirstOrDefault()?.CultureCode;
+    }
+
+    private async Task TriggerFilePicker()
+    {
+        await JS.InvokeVoidAsync("document.getElementById('fileInput').click");
+    }
+
+    private void OnDragOver(DragEventArgs e)
+    {
+        // Blazor does not support preventDefault, but drag-over still works fine
+    }
+
+    private async Task OnDrop(DragEventArgs e)
+    {
+        if (e.DataTransfer?.Files is null || e.DataTransfer.Files.Length == 0)
+            return;
+
+        var file = e.DataTransfer.Files[0];
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        await LoadFile(file);
+    }
+
+    private async Task LoadFile(IBrowserFile file)
+    {
+        _fileName = file.Name;
+        _fileStream = file.OpenReadStream(long.MaxValue);
+
+        using var reader = new StreamReader(_fileStream, leaveOpen: true);
+        string text = await reader.ReadToEndAsync();
+        _fileStream.Position = 0;
+
+        if (_fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+        {
+            _previewRows = PackService.PreviewJson(text);
+        }
+        else
+        {
+            _previewRows.Clear(); // ZIP preview not supported
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ImportPack()
+    {
+        if (_fileStream is null || _selectedCulture is null)
+            return;
+
+        var dto = new LanguagePackUploadDto
+        {
+            CultureCode = _selectedCulture,
+            FileStream = _fileStream,
+            FileName = _fileName ?? "upload"
+        };
+
+        if (_fileName!.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+        {
+            await PackService.ImportCultureJsonAsync(dto);
+        }
+        else if (_fileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+        {
+            await PackService.ImportZipAsync(_fileStream);
+        }
+
+        _previewRows.Clear();
+        _fileStream = null;
+        _fileName = null;
+
+        StateHasChanged();
+    }
+}

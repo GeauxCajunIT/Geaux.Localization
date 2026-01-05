@@ -1,0 +1,88 @@
+﻿@page "/admin/localization/cultures/edit/{Id:int}"
+@using Geaux.Localization.Admin.DTOs
+@inject CultureAdminService CultureService
+@inject NavigationManager Nav
+
+<PageTitle>Edit Culture</PageTitle>
+
+<MudPaper Class="pa-6" Elevation="1">
+    <MudStack Spacing="2">
+
+        <MudText Typo="Typo.h5">Edit Culture</MudText>
+
+        @if (_loading)
+        {
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+        }
+        else if (_model is not null)
+        {
+            <MudTextField @bind-Value="_model.CultureCode"
+                          Label="Culture Code"
+                          Variant="Variant.Outlined"
+                          FullWidth="true" />
+
+            <MudTextField @bind-Value="_model.DisplayName"
+                          Label="Display Name"
+                          Variant="Variant.Outlined"
+                          FullWidth="true"
+                          Class="mt-4" />
+
+            <MudSwitch T="bool" @bind-Checked="_model.IsActive"
+                       Color="Color.Primary"
+                       Label="Active"
+                       Class="mt-4" />
+
+            <MudSwitch T="bool" @bind-Checked="_model.IsRightToLeft"
+                       Color="Color.Primary"
+                       Label="Right-to-Left"
+                       Class="mt-2" />
+
+            <MudSwitch T="bool" @bind-Checked="_model.RequiresReview"
+                       Color="Color.Warning"
+                       Label="Requires Review"
+                       Class="mt-2" />
+
+            <MudStack Direction="Row" Spacing="2" Class="mt-4">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="Save">
+                    Save
+                </MudButton>
+
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Secondary"
+                           OnClick="Cancel">
+                    Cancel
+                </MudButton>
+            </MudStack>
+        }
+
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private LocalizationCultureDto? _model;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _model = await CultureService.GetCultureAsync(Id);
+        _loading = false;
+    }
+
+    private async Task Save()
+    {
+        if (_model is null)
+            return;
+
+        await CultureService.UpdateCultureAsync(_model);
+        Nav.NavigateTo("/admin/localization/cultures");
+    }
+
+    private void Cancel()
+    {
+        Nav.NavigateTo("/admin/localization/cultures");
+    }
+}

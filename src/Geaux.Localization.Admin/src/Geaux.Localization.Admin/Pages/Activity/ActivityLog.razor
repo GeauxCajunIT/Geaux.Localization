@@ -1,0 +1,108 @@
+﻿@page "/admin/localization/activity"
+@using Geaux.Localization.Admin.DTOs
+@inject DashboardService DashboardService
+
+<PageTitle>Activity Log</PageTitle>
+
+<MudPaper Class="pa-6" Elevation="1">
+    <MudStack Spacing="3">
+
+        <MudText Typo="Typo.h5">Recent Activity</MudText>
+
+        <!-- Search -->
+        <MudTextField @bind-Value="_search"
+                      Placeholder="Search activity..."
+                      Variant="Variant.Outlined"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Immediate="true"
+                      OnDebounceIntervalElapsed="ApplySearch"
+                      DebounceInterval="200"
+                      FullWidth="true" />
+
+        @if (_loading)
+        {
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+        }
+        else if (_filtered.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">
+                No activity found.
+            </MudAlert>
+        }
+        else
+        {
+            <MudTable Items="_filtered" Hover="true" Dense="true">
+
+                <HeaderContent>
+                    <MudTh>Timestamp</MudTh>
+                    <MudTh>Event</MudTh>
+                    <MudTh>Message</MudTh>
+                </HeaderContent>
+
+                <RowTemplate>
+                    <MudTd>@FormatTimestamp(context.Timestamp)</MudTd>
+                    <MudTd>
+                        <MudStack Direction="Row" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@GetEventIcon(context.EventType)" Color="Color.Primary" />
+                            <MudText>@context.EventType</MudText>
+                        </MudStack>
+                    </MudTd>
+                    <MudTd>@context.Message</MudTd>
+                </RowTemplate>
+
+            </MudTable>
+        }
+
+    </MudStack>
+</MudPaper>
+
+@code {
+    private List<DashboardActivityDto> _items = new();
+    private List<DashboardActivityDto> _filtered = new();
+
+    private string _search = string.Empty;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var dashboard = await DashboardService.GetDashboardAsync();
+        _items = dashboard.RecentActivity;
+        ApplySearch();
+        _loading = false;
+    }
+
+    private void ApplySearch()
+    {
+        if (string.IsNullOrWhiteSpace(_search))
+        {
+            _filtered = _items;
+        }
+        else
+        {
+            _filtered = _items
+                .Where(a =>
+                    a.EventType.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                    a.Message.Contains(_search, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+    }
+
+    private string FormatTimestamp(DateTime timestamp)
+    {
+        return timestamp.ToLocalTime().ToString("g");
+    }
+
+    private string GetEventIcon(string eventType)
+    {
+        return eventType switch
+        {
+            "KeyCreated" => Icons.Material.Filled.Add,
+            "KeyUpdated" => Icons.Material.Filled.Edit,
+            "KeyDeleted" => Icons.Material.Filled.Delete,
+            "ValueUpdated" => Icons.Material.Filled.Save,
+            "CultureUpdated" => Icons.Material.Filled.Language,
+            _ => Icons.Material.Filled.Info
+        };
+    }
+}

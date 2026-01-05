@@ -1,0 +1,40 @@
+﻿@inject NavigationManager Nav
+<MudNavGroup Text="Localization Admin"
+            Title="Localization"
+             Icon="@Icons.Material.Filled.Language"
+             ExpandIcon="@Icons.Material.Filled.ExpandMore"
+             CollapseIcon="@Icons.Material.Filled.ExpandLess"
+             DefaultOpen="true">
+
+    <MudNavLink Href="/admin/localization/dashboard"
+                Icon="@Icons.Material.Filled.Dashboard"
+                Match="NavLinkMatch.All">
+        Dashboard
+    </MudNavLink>
+
+    <MudNavLink Href="/admin/localization/keys"
+                Icon="@Icons.Material.Filled.Key">
+        Keys
+    </MudNavLink>
+
+    <MudNavLink Href="/admin/localization/values"
+                Icon="@Icons.Material.Filled.List">
+        Values
+    </MudNavLink>
+
+    <MudNavLink Href="/admin/localization/cultures"
+                Icon="@Icons.Material.Filled.Language">
+        Cultures
+    </MudNavLink>
+
+    <MudNavLink Href="/admin/localization/language-packs"
+                Icon="@Icons.Material.Filled.UploadFile">
+        Language Packs
+    </MudNavLink>
+
+    <MudNavLink Href="/admin/localization/activity"
+                Icon="@Icons.Material.Filled.History">
+        Activity Log
+    </MudNavLink>
+
+</MudNavGroup>

@@ -1,0 +1,104 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net9.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
+		<NoWarn>$(NoWarn);1591</NoWarn>
+
+		<IsPackable>true</IsPackable>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+
+		<PackageId>Geaux.Localization</PackageId>
+		<Title>Geaux.Localization</Title>
+		<Version>2.0.0</Version>
+		<Authors>Brent Lee Rigsby</Authors>
+		<Description>
+			Geaux.Localization is a database-backed localization provider for .NET with multi-tenant support, EF Core integration, culture fallback, attribute-based localization, and export/import tooling.
+		</Description>
+		<Summary>Database-backed localization for .NET with multi-tenant support and EF Core integration.</Summary>
+		<ProjectUrl>https://github.com/GeauxCajunIT/Geaux.Localization</ProjectUrl>
+		<RepositoryUrl>https://github.com/GeauxCajunIT/Geaux.Localization</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageProjectUrl>https://github.com/GeauxCajunIT/Geaux.Localization/wiki</PackageProjectUrl>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageTags>localization;globalization;multitenant;efcore;stringlocalizer;database;translations;blazor;aspnetcore;saas</PackageTags>
+
+		<PackageIcon>Icon.png</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+		<PackageReleaseNotes>
+			- Added culture fallback improvements 
+			- Improved admin UI export/import 
+			- Fixed missing key seeding for new cultures
+			- Normalized storage: LocalizationKeys + LocalizationValues
+			- Tenant/global precedence and culture fallback improvements
+			- Updated tests and sample
+		</PackageReleaseNotes>
+
+		<Company>Geaux Cajun IT</Company>
+
+		<PackageOutputPath>D:\Local-Nuget\Geaux.Localization</PackageOutputPath>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="..\..\..\assets\Icon.png" Pack="true" PackagePath="\" Link="Resources\icon.png" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Remove="bin\Debug\net9.0\Geaux.Localization.xml" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml" Pack="true" PackagePath="lib\$(TargetFramework)\" />
+	</ItemGroup>
+	<ItemGroup>
+		<!-- EF Core -->
+		<PackageReference Include="CsvHelper" Version="33.1.0" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.11" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.11" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.11">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+
+		<!-- Providers (kept for single-package convenience) -->
+		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.11" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.11" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.11">
+		  <PrivateAssets>all</PrivateAssets>
+		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.11" />
+		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
+		<PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
+
+		<!-- DI / Options / Config / Localization -->
+		<PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.11" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.11" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Localization" Version="9.0.11" />
+		<PackageReference Include="Microsoft.Extensions.Localization.Abstractions" Version="9.0.11" />
+		<PackageReference Include="Microsoft.Extensions.Options" Version="9.0.11" />
+		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.11" />
+		<PackageReference Include="Geaux.SharedKernal" Version="1.2.0" />
+		<PackageReference Include="Geaux.GuardClauses" Version="1.2.0" />
+	</ItemGroup>
+	<ItemGroup>
+	  <ProjectReference Include="..\..\Geaux.Shared\src\Geaux.Shared\Geaux.Shared.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+	  <None Update="README.md">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
+	</ItemGroup>
+
+
+</Project>
