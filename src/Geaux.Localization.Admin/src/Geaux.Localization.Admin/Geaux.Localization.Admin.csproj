@@ -1,58 +1,64 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
-<PropertyGroup>
-	<TargetFramework>net9.0</TargetFramework>
-	<RazorLangVersion>9.0</RazorLangVersion>
-	<Nullable>enable</Nullable>
-	<ImplicitUsings>enable</ImplicitUsings>
 
-	<!-- Packaging -->
-	<IsPackable>true</IsPackable>
-	<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+	<PropertyGroup>
+		<TargetFramework>net9.0</TargetFramework>
+		<RazorLangVersion>9.0</RazorLangVersion>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
 
-	<!-- NuGet Identity -->
-	<PackageId>Geaux.Localization.Admin</PackageId>
-	<Title>Geaux.Localization.Admin</Title>
-	<Version>2.0.0</Version>
-	<Authors>Brent Lee Rigsby</Authors>
-	<Company>Geaux Cajun IT</Company>
+		<!-- Packaging -->
+		<IsPackable>true</IsPackable>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 
-	<!-- Description / Summary -->
-	<Description>
-		Geaux.Localization.Admin provides a plug‑and‑play Razor Class Library admin dashboard
-		for managing localization keys, cultures, translations, and language packs. Includes
-		CSV/JSON/ZIP export and import tooling, missing‑value repair, and multi‑tenant support.
-	</Description>
+		<!-- NuGet Identity -->
+		<PackageId>Geaux.Localization.Admin</PackageId>
+		<Title>Geaux.Localization.Admin</Title>
+		<Version>2.0.0</Version>
+		<Authors>Brent Lee Rigsby</Authors>
+		<Company>Geaux Cajun IT</Company>
 
-	<Summary>Admin UI dashboard for managing database‑backed localization with export/import tooling.</Summary>
+		<!-- Description / Summary -->
+		<Description>
+			Geaux.Localization.Admin provides a plug‑and‑play Razor Class Library admin dashboard
+			for managing localization keys, cultures, translations, and language packs. Includes
+			CSV/JSON/ZIP export and import tooling, missing‑value repair, and multi‑tenant support.
+		</Description>
 
-	<!-- URLs -->
-	<ProjectUrl>https://github.com/GeauxCajunIT/Geaux.Localization</ProjectUrl>
-	<RepositoryUrl>https://github.com/GeauxCajunIT/Geaux.Localization</RepositoryUrl>
-	<RepositoryType>git</RepositoryType>
-	<PackageProjectUrl>https://github.com/GeauxCajunIT/Geaux.Localization/wiki</PackageProjectUrl>
+		<Summary>Admin UI dashboard for managing database‑backed localization with export/import tooling.</Summary>
 
-	<!-- License -->
-	<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<!-- URLs -->
+		<ProjectUrl>https://github.com/GeauxCajunIT/Geaux.Localization</ProjectUrl>
+		<RepositoryUrl>https://github.com/GeauxCajunIT/Geaux.Localization</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageProjectUrl>https://github.com/GeauxCajunIT/Geaux.Localization/wiki</PackageProjectUrl>
 
-	<!-- Tags -->
-	<PackageTags>Localization;admin;dashboard;blazor;razor;multitenant;translations;efcore;stringlocalizer;saas	</PackageTags>
-	<!-- Icon + README -->
-	<PackageIcon>icon.png</PackageIcon>
-	<PackageReadmeFile>README.md</PackageReadmeFile>
-	<!-- Symbols -->
-	<IncludeSymbols>true</IncludeSymbols>
-	<SymbolPackageFormat>snupkg</SymbolPackageFormat>
-	<!-- Release Notes -->
-	<PackageReleaseNotes>
-		- Initial release of the Geaux.Localization admin dashboard
-		- Culture and key management
-		- CSV/JSON/ZIP export and import
-		- Missing-value repair tooling
-		- Multi-tenant support
-		- MudBlazor-based UI components
-	</PackageReleaseNotes>
-</PropertyGroup>
-<ItemGroup>
+		<!-- License -->
+
+		<!-- Tags -->
+		<PackageTags>Localization;admin;dashboard;blazor;razor;multitenant;translations;efcore;stringlocalizer;saas</PackageTags>
+
+		<!-- Icon + README -->
+		<PackageIcon>Icon.png</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+
+		<!-- Symbols -->
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+		<!-- Release Notes -->
+		<PackageReleaseNotes>
+			- Initial release of the Geaux.Localization admin dashboard
+			- Culture and key management
+			- CSV/JSON/ZIP export and import
+			- Missing-value repair tooling
+			- Multi-tenant support
+			- MudBlazor-based UI components
+		</PackageReleaseNotes>
+		<BaseOutputPath>D:\Local-nuget\Geaux.Localization.Admin</BaseOutputPath>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+	</PropertyGroup>
+
+	<ItemGroup>
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />
 		<PackageReference Include="CsvHelper" Version="33.1.0" />
 		<PackageReference Include="MudBlazor" Version="8.15.0" />
@@ -60,21 +66,25 @@
 		<PackageReference Include="Geaux.GuardClauses" Version="1.2.0" />
 		<PackageReference Include="MudBlazor.ThemeManager" Version="3.0.0" />
 	</ItemGroup>
+
 	<ItemGroup>
-	  <None Include="..\README.md">
-	    <Pack>True</Pack>
-	    <PackagePath>\</PackagePath>
-	  </None>
-	  <None Include="Resources\icon.png" Pack="True" PackagePath="\" />
+		<ProjectReference Include="..\..\..\Geaux.Localization\src\Geaux.Localization.csproj" />
+		<ProjectReference Include="..\..\..\Geaux.Shared\src\Geaux.Shared\Geaux.Shared.csproj" />
 	</ItemGroup>
+
+	<!-- Include README and LICENSE from this project folder -->
 	<ItemGroup>
-	  <ProjectReference Include="..\..\..\Geaux.Localization\src\Geaux.Localization.csproj" />
-	  <ProjectReference Include="..\..\..\Geaux.Shared\src\Geaux.Shared\Geaux.Shared.csproj" />
+		<None Include="..\..\..\..\assets\Icon.png">
+		  <Pack>True</Pack>
+		  <PackagePath>\</PackagePath>
+		</None>
+		<None Include="..\README.md">
+		  <Pack>True</Pack>
+		  <PackagePath>\</PackagePath>
+		</None>
+		<None Include="README.md" Pack="true" PackagePath="\" />
+		<None Include="LICENSE" Pack="true" PackagePath="\" />
+		<None Include="Resources\icon.png" Pack="true" PackagePath="\" />
 	</ItemGroup>
-	<ItemGroup>
-	  <None Update="README.md">
-	    <Pack>True</Pack>
-	    <PackagePath>\</PackagePath>
-	  </None>
-</ItemGroup>
+
 </Project>
